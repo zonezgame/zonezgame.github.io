@@ -840,7 +840,7 @@ let SCAN={stream:null,on:false,lib:null};
 async function scanStation(){const sh=$('#sheet');sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Quét trạm nạp"><h3 style="font-family:var(--display);font-weight:400;font-size:20px;margin:0">Quét QR trạm nạp</h3><video id="scV" playsinline muted style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#000"></video><p class="note" id="scMsg" style="margin:0">Đưa mã QR của trạm vào khung.</p><button class="btn" id="scX" type="button" style="width:100%">Đóng</button></div>`;sh.hidden=false;
  const stop=()=>{SCAN.on=false;if(SCAN.stream){SCAN.stream.getTracks().forEach(t=>t.stop());SCAN.stream=null}};
  $('#scX').addEventListener('click',()=>{stop();sh.hidden=true});
- try{if(!SCAN.lib){await loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');SCAN.lib=window.jsQR}
+ try{if(!SCAN.lib){await loadScript('lib/jsQR.js');SCAN.lib=window.jsQR}
   SCAN.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});const v=$('#scV');v.srcObject=SCAN.stream;await v.play();SCAN.on=true}
  catch(e){$('#scMsg').textContent='Không mở được camera. Dùng app camera của máy để quét QR cũng được.';return}
  const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
@@ -864,7 +864,7 @@ async function handleCureLink(){const id=new URLSearchParams(location.search).ge
 
 /* Mã QR thật cho nhân viên quét */
 let QRLIB=null;
-async function realQR(cv,text){try{if(!QRLIB){await loadScript('https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js');QRLIB=window.qrcode}
+async function realQR(cv,text){try{if(!QRLIB){await loadScript('lib/qrcode.js');QRLIB=window.qrcode}
  const q=QRLIB(0,'M');q.addData(text);q.make();const n=q.getModuleCount(),cell=Math.floor(200/(n+8)),size=cell*(n+8);cv.width=size;cv.height=size;const g=cv.getContext('2d');
  g.fillStyle='#fff';g.fillRect(0,0,size,size);g.fillStyle='#0b1019';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(q.isDark(y,x))g.fillRect((x+4)*cell,(y+4)*cell,cell,cell);return true}catch(e){return false}}
 

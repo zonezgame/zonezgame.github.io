@@ -39,7 +39,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const root=document.getElementById('root');
 if(!id){root.innerHTML='<div class="err">Thiếu mã trạm. Mở trang này từ nút "In QR" trong trang Quầy.</div>';return}
 const url='https://zonezgame.github.io/?tram='+id;
-const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+const s=document.createElement('script');s.src='lib/qrcode.js';
 s.onload=()=>{const qr=qrcode(0,'M');qr.addData(url);qr.make();
  root.innerHTML=`<section class="sheet">
   <div class="top"><svg class="bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#ffb547"/></svg><small>ZONE Z · THEZONE</small><h1>TRẠM NẠP <span>FLASH</span></h1></div>

@@ -114,8 +114,8 @@ textarea{min-height:96px}
  <section class="box">
   <h2>Trạm nạp flash</h2>
   <p class="muted">Dán QR ở cửa hàng đối tác. Khách quét là đầy flash. Mỗi khách nạp 1 lần mỗi ngày tại một trạm; hết lượt trong ngày thì trạm tạm khoá tới 0 giờ.</p>
-  <div class="row"><input id="trName" class="num" placeholder="Tên trạm, ví dụ: Tạp hoá Cô Ba" maxlength="40" autocomplete="off">
-   <select id="trLv" style="flex:0 0 40%"><option value="nho">Nhỏ · 5 lượt/ngày</option><option value="vua">Vừa · 10 lượt/ngày</option><option value="lon">Lớn · 25 lượt/ngày</option></select></div>
+  <div class="row"><input id="trName" class="num" placeholder="Tên trạm" maxlength="40" autocomplete="off">
+   <select id="trLv" style="flex:0 0 40%"><option value="nho">Nhỏ · 5</option><option value="vua">Vừa · 10</option><option value="lon">Lớn · 25</option></select></div>
   <button id="trAdd" type="button">Tạo trạm</button><p class="msg" id="trMsg"></p>
   <div class="acc" id="trList"></div>
  </section>
@@ -176,7 +176,7 @@ $('#tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');i
 /* ---------- Quét QR ---------- */
 let jsQR=null;
 $('#camBtn').addEventListener('click',async()=>{if(stream){stopCam();return}
- try{if(!jsQR){await load('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');jsQR=window.jsQR}
+ try{if(!jsQR){await load('lib/jsQR.js');jsQR=window.jsQR}
   stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});const v=$('#cam');v.srcObject=stream;await v.play();$('#camBtn').textContent='Tắt camera';scanning=true;tick()}
  catch(e){$('#camBtn').textContent='Không mở được camera, gõ mã bên dưới'}});
 function stopCam(){scanning=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('#cam').srcObject=null;$('#camBtn').textContent='Bật camera quét'}
