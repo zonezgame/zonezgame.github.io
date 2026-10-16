@@ -372,21 +372,49 @@ function sfxInit(){const a=ac();if(!a)return null;if(SFX.bus&&SFX.ctx===a)return
  const nl=a.sampleRate*2,nb=a.createBuffer(1,nl,a.sampleRate),nd=nb.getChannelData(0);let b=0;for(let i=0;i<nl;i++){b=.97*b+.03*(Math.random()*2-1);nd[i]=b*6+(Math.random()*2-1)*.35}SFX.noise=nb;
  SFX.fry=distCurve(24);SFX.chest=distCurve(5);return a}
 function panNode(a,p){if(a.createStereoPanner){const n=a.createStereoPanner();n.pan.value=clamp(p||0,-1,1);return n}return a.createGain()}
-/* d: khoảng cách 0 (sát mặt) .. 1 (xa); pan: -1 trái .. 1 phải; kind: 'growl' | 'roar' (vồ, cắn) */
-function growl(d,pan,kind){const a=sfxInit();if(!a||S.mute)return;const t=a.currentTime+.01,near=clamp(1-d,0,1),roar=kind==='roar';
- const dur=(roar?rnd(.9,1.4):rnd(1.1,2.1))*(1-.25*near),f0=rnd(62,96)*(roar?1.35:1)*(1+.15*Math.random());
- const o=a.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(f0*.8,t);o.frequency.linearRampToValueAtTime(f0*(roar?1.5:1.15),t+dur*(roar?.25:.35));o.frequency.linearRampToValueAtTime(f0*.62,t+dur);
- const jit=a.createOscillator();jit.type='triangle';jit.frequency.value=rnd(11,23);const jg=a.createGain();jg.gain.value=f0*.11;jit.connect(jg).connect(o.frequency);
- const vca=a.createGain();vca.gain.value=.55;const am=a.createOscillator();am.type='square';am.frequency.value=rnd(24,38);const ag=a.createGain();ag.gain.value=.45;am.connect(ag).connect(vca.gain);
- const ws=a.createWaveShaper();ws.curve=SFX.fry;ws.oversample='2x';o.connect(vca).connect(ws);
- const mix=a.createGain();const vow=roar?[[rnd(650,800),5,1],[rnd(1150,1400),7,.7],[2700,9,.3]]:[[rnd(380,560),6,1],[rnd(850,1100),8,.55],[2500,10,.2]];
- for(const [fq,q,g] of vow){const bp=a.createBiquadFilter();bp.type='bandpass';bp.frequency.setValueAtTime(fq*.85,t);bp.frequency.linearRampToValueAtTime(fq*1.1,t+dur*.4);bp.frequency.linearRampToValueAtTime(fq*.8,t+dur);bp.Q.value=q;const gg=a.createGain();gg.gain.value=g*2.2;ws.connect(bp).connect(gg).connect(mix)}
- const nz=a.createBufferSource();nz.buffer=SFX.noise;const nf=a.createBiquadFilter();nf.type='bandpass';nf.frequency.value=roar?1800:1200;nf.Q.value=.7;const ng=a.createGain();ng.gain.value=roar?.5:.3;nz.connect(nf).connect(ng).connect(mix);
- const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420+7500*near*near;lp.Q.value=.6;
- const env=a.createGain(),pk=(roar?.5:.32)*(.12+.88*near*near);env.gain.setValueAtTime(0,t);env.gain.linearRampToValueAtTime(pk,t+(roar?.05:.18));env.gain.setValueAtTime(pk*.9,t+dur*.6);env.gain.exponentialRampToValueAtTime(.0005,t+dur);
- const pn=panNode(a,pan*.85);mix.connect(lp).connect(env).connect(pn).connect(SFX.bus);
- const send=a.createGain();send.gain.value=.15+.75*(1-near);env.connect(send).connect(SFX.rev);
- for(const n of [o,jit,am])n.start(t),n.stop(t+dur+.05);nz.start(t,Math.random());nz.stop(t+dur+.05)}
+/* Gầm gừ kiểu điện ảnh: nhiều lớp chồng nhau
+   1) giọng chính: 3 dây thanh lệch tông + rè khàn (vocal fry) + méo nặng, nguyên âm trượt "ư→a→ô"
+   2) lớp trầm rung ngực 40–60 Hz   3) tiếng ọc ọc trong cổ họng   4) hơi thở rít trước khi gầm
+   5) tiếng vọng lớn khi ở xa. kind: 'growl' gầm thường, 'roar' gào khi vồ/cắn */
+function sh(a,t,dur,rate,lo,hi){/* LFO ngẫu nhiên kiểu sample-and-hold, trả về AudioParam-friendly ConstantSource */
+ const c=a.createConstantSource?a.createConstantSource():null;if(!c)return null;c.offset.setValueAtTime(lo,t);let x=t;while(x<t+dur){x+=1/rate*(.5+Math.random());c.offset.linearRampToValueAtTime(lo+(hi-lo)*Math.random(),x)}c.start(t);c.stop(t+dur+.1);return c}
+function growl(d,pan,kind){const a=sfxInit();if(!a||S.mute)return;const near=clamp(1-d,0,1),roar=kind==='roar',t0=a.currentTime+.01;
+ const inhale=!roar&&Math.random()<.55,t=t0+(inhale?rnd(.25,.4):0),dur=(roar?rnd(1,1.5):rnd(1.4,2.6))*(1-.2*near);
+ const out=a.createGain(),pk=(roar?.62:.42)*(.1+.9*near*near);
+ out.gain.setValueAtTime(0,t);out.gain.linearRampToValueAtTime(pk,t+(roar?.04:.2));out.gain.setValueAtTime(pk*.95,t+dur*.55);out.gain.exponentialRampToValueAtTime(.0004,t+dur);
+ const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=380+8500*near*near;lp.Q.value=.5;
+ const pn=panNode(a,pan*.85);out.connect(lp).connect(pn).connect(SFX.bus);
+ const send=a.createGain();send.gain.value=.2+.9*(1-near);lp.connect(send).connect(SFX.rev);
+ const stop=[];
+ /* 1) giọng chính */
+ const f0=(roar?rnd(95,135):rnd(55,82))*(1+.1*Math.random()),voice=a.createGain();voice.gain.value=.5;
+ const fry=a.createGain();fry.gain.value=.5;const am=sh(a,t,dur,roar?40:26,.05,1);if(am)am.connect(fry.gain);
+ for(const det of [1,.993,1.012]){const o=a.createOscillator();o.type='sawtooth';
+  o.frequency.setValueAtTime(f0*det*.75,t);o.frequency.linearRampToValueAtTime(f0*det*(roar?1.6:1.2),t+dur*(roar?.18:.3));o.frequency.linearRampToValueAtTime(f0*det*(roar?1.1:.95),t+dur*.7);o.frequency.linearRampToValueAtTime(f0*det*.55,t+dur);
+  const jt=sh(a,t,dur,14,-f0*.07,f0*.07);if(jt)jt.connect(o.frequency);o.connect(voice);o.start(t);stop.push(o)}
+ voice.connect(fry);const ws=a.createWaveShaper();ws.curve=distCurve(roar?60:38);ws.oversample='4x';fry.connect(ws);
+ const vw=roar?[[700,980,5,1],[1250,1500,7,.75],[2800,3100,9,.4]]:[[330,620,6,1],[780,1050,8,.6],[2400,2600,10,.25]];
+ for(const [fa,fb,q,g] of vw){const bp=a.createBiquadFilter();bp.type='bandpass';bp.Q.value=q;bp.frequency.setValueAtTime(fa,t);bp.frequency.linearRampToValueAtTime(fb,t+dur*.35);bp.frequency.linearRampToValueAtTime(fa*.85,t+dur);const gg=a.createGain();gg.gain.value=g*2.6;ws.connect(bp).connect(gg).connect(out)}
+ /* 2) lớp trầm rung ngực */
+ const sub=a.createOscillator();sub.type='triangle';sub.frequency.setValueAtTime(roar?62:46,t);sub.frequency.linearRampToValueAtTime(roar?48:38,t+dur);
+ const sw=a.createWaveShaper();sw.curve=SFX.chest;const sg=a.createGain();sg.gain.value=roar?.9:.75;const slp=a.createBiquadFilter();slp.type='lowpass';slp.frequency.value=180;
+ sub.connect(sw).connect(slp).connect(sg).connect(out);const sam=sh(a,t,dur,18,.3,1);if(sam){const sv=a.createGain();sv.gain.value=0;sam.connect(sv.gain);}sub.start(t);stop.push(sub);
+ /* 3) ọc ọc cổ họng */
+ const gz=a.createBufferSource();gz.buffer=SFX.noise;const gb=a.createBiquadFilter();gb.type='bandpass';gb.Q.value=9;const gfq=sh(a,t,dur,9,250,900);gb.frequency.value=0;if(gfq)gfq.connect(gb.frequency);else gb.frequency.value=500;
+ const gg2=a.createGain();gg2.gain.value=0;const gam=sh(a,t,dur,16,0,roar?.5:.9);if(gam)gam.connect(gg2.gain);else gg2.gain.value=.4;gz.connect(gb).connect(gg2).connect(out);gz.start(t,Math.random());stop.push(gz);
+ /* 4) hơi rít / gào xé */
+ const hz=a.createBufferSource();hz.buffer=SFX.noise;const hf=a.createBiquadFilter();hf.type='bandpass';hf.frequency.value=roar?2600:1500;hf.Q.value=.8;const hg=a.createGain();hg.gain.value=roar?.7:.25;hz.connect(hf).connect(hg).connect(out);hz.start(t,Math.random());stop.push(hz);
+ if(inhale){const iz=a.createBufferSource();iz.buffer=SFX.noise;const ifl=a.createBiquadFilter();ifl.type='bandpass';ifl.frequency.setValueAtTime(900,t0);ifl.frequency.linearRampToValueAtTime(2200,t);ifl.Q.value=1.2;
+  const ig=a.createGain(),ipk=.22*(.15+.85*near*near);ig.gain.setValueAtTime(0,t0);ig.gain.linearRampToValueAtTime(ipk,t-.06);ig.gain.linearRampToValueAtTime(0,t);
+  const ip=panNode(a,pan*.85);iz.connect(ifl).connect(ig).connect(ip).connect(SFX.bus);iz.start(t0,Math.random());iz.stop(t+.02)}
+ for(const n of stop)n.stop(t+dur+.05)}
+/* Nền u ám khi đang dò: tiếng gió trầm + rền, to dần khi zombie lại gần */
+function droneSet(level){if(!SFX.drone){if(level<=0||S.mute)return;sfxInit()}const a=SFX.ctx;if(!a||!SFX.bus)return;if(!SFX.drone){
+  const g=a.createGain();g.gain.value=0;const nz=a.createBufferSource();nz.buffer=SFX.noise;nz.loop=true;const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=260;f.Q.value=3;
+  const lfo=a.createOscillator();lfo.frequency.value=.09;const lg=a.createGain();lg.gain.value=120;lfo.connect(lg).connect(f.frequency);
+  const o=a.createOscillator();o.type='sawtooth';o.frequency.value=41.2;const o2=a.createOscillator();o2.type='sawtooth';o2.frequency.value=41.8;const ol=a.createBiquadFilter();ol.type='lowpass';ol.frequency.value=110;const og=a.createGain();og.gain.value=.35;
+  nz.connect(f).connect(g);o.connect(ol);o2.connect(ol);ol.connect(og).connect(g);g.connect(SFX.bus);for(const n of [nz,lfo,o,o2])n.start();SFX.drone={g,f}}
+ SFX.drone.g.gain.setTargetAtTime(S.mute?0:level,a.currentTime,.4)}
 function beat1(a,t,v,p){const o=a.createOscillator();o.type='sine';o.frequency.setValueAtTime(70*p,t);o.frequency.exponentialRampToValueAtTime(34*p,t+.14);
  const ws=a.createWaveShaper();ws.curve=SFX.chest;const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=320;
  const g=a.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.006);g.gain.exponentialRampToValueAtTime(.0008,t+.26);
@@ -778,7 +806,7 @@ function finish(result){if(HS.done)return;HS.done=true;const rec={wait:HS.wait==
  if(result==='abandon')return;
  ui.res.innerHTML=html+`<div class="hrow"><button class="btn" id="rHome" type="button">Về Vùng An Toàn</button><button class="btn pri" id="rAgain" type="button">Dò tiếp</button></div>`;
  setPhase('result');$('#rAgain').addEventListener('click',()=>startHunt());$('#rHome').addEventListener('click',closeHunt);hudTop()}
-function closeHunt(){if(!HS.done&&HS.phase!=='result')finish('abandon');cancelAnimationFrame(raf);stopCam();$('#hunt').hidden=true;render()}
+function closeHunt(){droneSet(0);if(!HS.done&&HS.phase!=='result')finish('abandon');cancelAnimationFrame(raf);stopCam();$('#hunt').hidden=true;render()}
 $('#quit').addEventListener('click',closeHunt);
 $('#reroll').addEventListener('click',reroll);
 $('#shoot').addEventListener('pointerdown',e=>{e.preventDefault();shoot()});
@@ -805,6 +833,7 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
  const ph=HS.phase;
  if(ph==='aim')updateApproach(now,dt);
  const danger=(ph==='aim'||ph==='bite')&&HS.z?clamp((.5-HS.d)/.5,0,1):0;
+ droneSet(ph==='aim'?.1+.35*clamp(1-HS.d,0,1):ph==='bite'?.5:ph==='scan'?.07:0);
  let shake=0;if(ph==='bite')shake=4+14*(1-clamp((now-HS.biteAt)/1200,0,1));else if(ph==='aim'&&HS.d<.3)shake=9*danger;
  ctx.save();if(shake)ctx.translate(rnd(-1,1)*shake,rnd(-1,1)*shake);
  ctx.clearRect(-30,-30,W+60,Hh+60);if(CAM){ctx.fillStyle='rgba(6,10,22,.34)';ctx.fillRect(-30,-30,W+60,Hh+60)}else ctx.drawImage(bgCanvas,0,0,W,Hh);
