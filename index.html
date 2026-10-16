@@ -362,7 +362,39 @@ let AC=null;
 const ac=()=>{if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended')AC.resume().catch(()=>{});return AC};
 function tone(f,d,type='sine',v=.07,to){const a=ac();if(!a||S.mute)return;const t=a.currentTime,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.02)}
 function shutter(){const a=ac();if(!a||S.mute)return;const len=Math.floor(a.sampleRate*.09),b=a.createBuffer(1,len,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();f.type='highpass';f.frequency.value=1800;g.gain.value=.35;s.buffer=b;s.connect(f).connect(g).connect(a.destination);s.start();tone(2400,.05,'square',.03)}
-const groan=()=>tone(140,.7,'sawtooth',.05,70);
+/* ---------- Âm thanh rượt đuổi: gầm gừ zombie + tim đập (tổng hợp bằng WebAudio, không cần tải file) ---------- */
+const SFX={bus:null};
+function distCurve(k){const n=1024,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;c[i]=(1+k)*x/(1+k*Math.abs(x))}return c}
+function sfxInit(){const a=ac();if(!a)return null;if(SFX.bus&&SFX.ctx===a)return a;SFX.ctx=a;
+ const bus=a.createDynamicsCompressor();bus.threshold.value=-16;bus.knee.value=12;bus.ratio.value=5;bus.attack.value=.004;bus.release.value=.2;bus.connect(a.destination);SFX.bus=bus;
+ const len=Math.floor(a.sampleRate*1.8),ir=a.createBuffer(2,len,a.sampleRate);for(let c=0;c<2;c++){const d=ir.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2)}
+ SFX.rev=a.createConvolver();SFX.rev.buffer=ir;const rg=a.createGain();rg.gain.value=.55;SFX.rev.connect(rg).connect(bus);
+ const nl=a.sampleRate*2,nb=a.createBuffer(1,nl,a.sampleRate),nd=nb.getChannelData(0);let b=0;for(let i=0;i<nl;i++){b=.97*b+.03*(Math.random()*2-1);nd[i]=b*6+(Math.random()*2-1)*.35}SFX.noise=nb;
+ SFX.fry=distCurve(24);SFX.chest=distCurve(5);return a}
+function panNode(a,p){if(a.createStereoPanner){const n=a.createStereoPanner();n.pan.value=clamp(p||0,-1,1);return n}return a.createGain()}
+/* d: khoảng cách 0 (sát mặt) .. 1 (xa); pan: -1 trái .. 1 phải; kind: 'growl' | 'roar' (vồ, cắn) */
+function growl(d,pan,kind){const a=sfxInit();if(!a||S.mute)return;const t=a.currentTime+.01,near=clamp(1-d,0,1),roar=kind==='roar';
+ const dur=(roar?rnd(.9,1.4):rnd(1.1,2.1))*(1-.25*near),f0=rnd(62,96)*(roar?1.35:1)*(1+.15*Math.random());
+ const o=a.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(f0*.8,t);o.frequency.linearRampToValueAtTime(f0*(roar?1.5:1.15),t+dur*(roar?.25:.35));o.frequency.linearRampToValueAtTime(f0*.62,t+dur);
+ const jit=a.createOscillator();jit.type='triangle';jit.frequency.value=rnd(11,23);const jg=a.createGain();jg.gain.value=f0*.11;jit.connect(jg).connect(o.frequency);
+ const vca=a.createGain();vca.gain.value=.55;const am=a.createOscillator();am.type='square';am.frequency.value=rnd(24,38);const ag=a.createGain();ag.gain.value=.45;am.connect(ag).connect(vca.gain);
+ const ws=a.createWaveShaper();ws.curve=SFX.fry;ws.oversample='2x';o.connect(vca).connect(ws);
+ const mix=a.createGain();const vow=roar?[[rnd(650,800),5,1],[rnd(1150,1400),7,.7],[2700,9,.3]]:[[rnd(380,560),6,1],[rnd(850,1100),8,.55],[2500,10,.2]];
+ for(const [fq,q,g] of vow){const bp=a.createBiquadFilter();bp.type='bandpass';bp.frequency.setValueAtTime(fq*.85,t);bp.frequency.linearRampToValueAtTime(fq*1.1,t+dur*.4);bp.frequency.linearRampToValueAtTime(fq*.8,t+dur);bp.Q.value=q;const gg=a.createGain();gg.gain.value=g*2.2;ws.connect(bp).connect(gg).connect(mix)}
+ const nz=a.createBufferSource();nz.buffer=SFX.noise;const nf=a.createBiquadFilter();nf.type='bandpass';nf.frequency.value=roar?1800:1200;nf.Q.value=.7;const ng=a.createGain();ng.gain.value=roar?.5:.3;nz.connect(nf).connect(ng).connect(mix);
+ const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420+7500*near*near;lp.Q.value=.6;
+ const env=a.createGain(),pk=(roar?.5:.32)*(.12+.88*near*near);env.gain.setValueAtTime(0,t);env.gain.linearRampToValueAtTime(pk,t+(roar?.05:.18));env.gain.setValueAtTime(pk*.9,t+dur*.6);env.gain.exponentialRampToValueAtTime(.0005,t+dur);
+ const pn=panNode(a,pan*.85);mix.connect(lp).connect(env).connect(pn).connect(SFX.bus);
+ const send=a.createGain();send.gain.value=.15+.75*(1-near);env.connect(send).connect(SFX.rev);
+ for(const n of [o,jit,am])n.start(t),n.stop(t+dur+.05);nz.start(t,Math.random());nz.stop(t+dur+.05)}
+function beat1(a,t,v,p){const o=a.createOscillator();o.type='sine';o.frequency.setValueAtTime(70*p,t);o.frequency.exponentialRampToValueAtTime(34*p,t+.14);
+ const ws=a.createWaveShaper();ws.curve=SFX.chest;const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=320;
+ const g=a.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.006);g.gain.exponentialRampToValueAtTime(.0008,t+.26);
+ o.connect(ws).connect(lp).connect(g).connect(SFX.bus);o.start(t);o.stop(t+.3);
+ const nz=a.createBufferSource();nz.buffer=SFX.noise;const nf=a.createBiquadFilter();nf.type='lowpass';nf.frequency.value=500;const ng=a.createGain();ng.gain.setValueAtTime(v*.35,t);ng.gain.exponentialRampToValueAtTime(.0008,t+.05);nz.connect(nf).connect(ng).connect(SFX.bus);nz.start(t,Math.random());nz.stop(t+.06)}
+/* Một nhịp tim "thình-thịch"; v: 0..1 độ lớn, fast: 0..1 càng gấp thì hai tiếng càng sát */
+function heartbeat(v,fast){const a=sfxInit();if(!a||S.mute)return;const t=a.currentTime+.01,amp=.25+.75*v;beat1(a,t,amp,1);beat1(a,t+.2-.07*fast,amp*.7,1.18)}
+const groan=()=>growl(HS&&HS.d!=null?HS.d:.6,HS&&HS.pan||0,'roar');
 const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
 
 /* ---------- Logic nhịp gặp & rơi đồ ---------- */
@@ -697,7 +729,7 @@ const ui={scan:$('#hudScan'),aim:$('#hudAim'),res:$('#result'),bub:$('#bubble'),
 const HINTS=['Nó vòng ra sau lưng bạn rồi, thử quay máy lại.','Zombie thích chỗ tối. Thử hướng về góc ít đèn.','Tiếng động hút zombie. Đứng yên một chút.','Thử dò chỗ khác, tín hiệu ở đây yếu.'];
 function setPhase(p){HS.phase=p;ui.scan.hidden=p!=='scan';ui.aim.hidden=p!=='aim';ui.res.hidden=p!=='result';if(p!=='aim'&&p!=='cure')ui.bub.hidden=true}
 function hudTop(){$('#hudFlash').textContent=`FLASH ${S.flash}/${FLASH_MAX}`;$('#hudTz').textContent=`TZ ${fmt(S.tz)}`;$('#hudAv').src=avatarSrc();$('#hudAv').className=avClass();$('#infChip').hidden=!infected()}
-const thump=()=>{tone(58,.13,'sine',.22);setTimeout(()=>tone(50,.11,'sine',.16),130)};
+
 let raf=0,lastT=0;
 function startHunt(){if(CLOUD.locked){toast('Tài khoản đang tạm khoá. Liên hệ quầy THEZONE.');return}ac();regen();resize();startSensors();startCam();try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>WAKE=w).catch(()=>{})}catch(e){}DISP=getComputedStyle(document.documentElement).getPropertyValue('--display');const now=performance.now();
  const fast=S.cfg.firstFast&&S.lastHuntDay!==dayKey();S.lastHuntDay=dayKey();save();
@@ -765,7 +797,7 @@ function updateApproach(now,dt){
   else{HS.mode='walk';HS.modeUntil=now+rnd(700,1500)}}
  const mult=HS.mode==='lunge'?4:HS.mode==='pause'?.12:1;
  HS.d-=dt*mult/AP[HS.tier];
- if(HS.d<=0){HS.d=0;HS.biteAt=now;setPhase('bite');noise();tone(90,.6,'sawtooth',.12,40);buzz([200,60,300])}}
+ if(HS.d<=0){HS.d=0;HS.biteAt=now;setPhase('bite');noise();growl(0,HS.pan||0,'roar');buzz([200,60,300])}}
 function noise(){const a=ac();if(!a||S.mute)return;const len=Math.floor(a.sampleRate*.35),b=a.createBuffer(1,len,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();f.type='lowpass';f.frequency.value=900;g.gain.value=.5;s.buffer=b;s.connect(f).connect(g).connect(a.destination);s.start()}
 
 function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(.05,lastT?(now-lastT)/1000:0);lastT=now;
@@ -801,8 +833,9 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
    ctx.font=`18px ${DISP}`;ctx.textAlign='center';ctx.fillStyle=p<.35?'#ff6767':p<.7?'#ffb547':'#7fd18b';ctx.fillText(`${Math.round(p*100)}%`,rx,ry+R*1.5+24);
    if(g.hx<0||g.hx>W){const L=g.hx<0,ax=L?26:W-26,ay=clamp(g.hy,140,Hh*.7),pl=.6+.4*Math.sin(now/150);ctx.save();ctx.globalAlpha=pl;ctx.fillStyle='#ff4d4d';ctx.beginPath();
     if(L){ctx.moveTo(ax-14,ay);ctx.lineTo(ax+18,ay-26);ctx.lineTo(ax+18,ay+26)}else{ctx.moveTo(ax+14,ay);ctx.lineTo(ax-18,ay-26);ctx.lineTo(ax-18,ay+26)}ctx.closePath();ctx.fill();ctx.restore()}
-   if(HS.d<.65){const gap=1100-750*clamp((.65-HS.d)/.65,0,1);if(now-HS.lastHb>gap){HS.lastHb=now;thump();if(danger>.4)buzz(35)}}
-   if(now>HS.growlAt){HS.growlAt=now+rnd(2200,4000);tone(120,.6,'sawtooth',.04+.08*danger,60)}
+   HS.pan=clamp((g.hx-W/2)/(W/2),-1,1);
+   {const near=clamp(1-HS.d,0,1),bpm=60+105*Math.pow(near,1.3),gap=60000/bpm;if(now-HS.lastHb>gap){HS.lastHb=now;heartbeat(.15+.85*near*near,near);if(danger>.4)buzz(30)}}
+   if(now>HS.growlAt){HS.growlAt=now+rnd(1700,3400)*(.4+.6*HS.d);growl(HS.d,HS.pan,'growl')}
    if(now-HS.uiAt>120){HS.uiAt=now;$('#distM').textContent=(HS.d*15).toFixed(1)+' m';const ce=$('#chance');ce.textContent=Math.round(p*100)+'%';ce.style.color=p<.35?'#ff6767':p<.7?'#ffb547':'#7fd18b';
     $('#distBar').style.width=((1-HS.d)*100).toFixed(0)+'%';
     const off=g.hx<0?'left':g.hx>W?'right':null;$('#aimHint').textContent=off?(off==='left'?'Nó ở bên TRÁI! '+(GYRO?'Xoay máy sang trái':'Vuốt sang phải'):'Nó ở bên PHẢI! '+(GYRO?'Xoay máy sang phải':'Vuốt sang trái')):!on?(GYRO?'Xoay máy đưa đầu nó vào khung tròn':'Vuốt ngang đưa đầu nó vào khung tròn'):HS.d>.66?'Còn xa, flash yếu. Chờ thêm hay chụp liều?':HS.d>.3?'Vừa tầm. Chụp đi!':'SÁT MẶT RỒI! Chụp ngay!'}}
