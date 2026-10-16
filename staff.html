@@ -197,7 +197,7 @@ const curedOf=d=>Object.values(d.cured||{}).reduce((a,b)=>a+b,0);
 function card(box,id,d,full){const inf=(d.infectedUntil||0)>Date.now();
  box.innerHTML=`<dl><dt>Khách</dt><dd>${esc(nameOf(d))}${d.locked?'<span class="tag">Đang khoá</span>':''}${d.guest?'<span class="tag g">Chơi thử</span>':''}</dd>
  <dt>TZ</dt><dd>${vn(d.tz)}</dd><dt>Flash</dt><dd>${d.flash??'?'}/12</dd><dt>Nhiễm độc</dt><dd>${inf?'còn '+mm(d.infectedUntil-Date.now()):'không'}</dd>
- ${full?`<dt>Chữa được</dt><dd>${vn(curedOf(d))} zombie · ${vn((d.hunts||[]).length)} lượt dò · bị cắn ${vn(d.bites)}</dd><dt>Frame</dt><dd>${Object.keys(d.frames||{}).length}</dd><dt>Tạo lúc</dt><dd>${d.createdAt?new Date(d.createdAt).toLocaleString('vi-VN'):'—'}</dd><dt>Chơi gần nhất</dt><dd>${ago(d.updatedAt)}</dd>`:''}</dl>
+ ${full?`<dt>Chữa được</dt><dd>${vn(curedOf(d))} zombie · ${vn((d.hunts||[]).length)} lượt dò · bị cắn ${vn(d.bites)}</dd><dt>Frame</dt><dd>${Object.keys(d.frames||{}).length}</dd><dt>Shop</dt><dd>đã tiêu ${vn(d.shopSpent)} TZ · ${Object.keys(d.owned||{}).length} món trang trí · ${d.charm||0} bùa</dd><dt>Tạo lúc</dt><dd>${d.createdAt?new Date(d.createdAt).toLocaleString('vi-VN'):'—'}</dd><dt>Chơi gần nhất</dt><dd>${ago(d.updatedAt)}</dd>`:''}</dl>
  <div class="row"><button type="button" data-g="grantRefill">Nạp đầy flash</button><button type="button" class="red" data-g="grantCure"${inf?'':' disabled'}>Giải độc</button></div>
  ${full?`<div class="row"><input class="num" type="number" inputmode="numeric" placeholder="Số TZ" data-amt><button type="button" data-tz="1" style="flex:0 0 auto">Cộng</button><button type="button" data-tz="-1" style="flex:0 0 auto">Trừ</button></div>
  <button type="button" data-lock="${d.locked?'0':'1'}"${d.locked?'':' class="red"'}>${d.locked?'Mở khoá tài khoản':'Khoá tài khoản'}</button>
@@ -234,7 +234,7 @@ async function loadAdmin(){$('#ov').innerHTML='<p class="muted">Đang tải…</
   let usedToday=0;cq.forEach(x=>{if(x.data().used)usedToday++});
   const tz=reg.reduce((a,u)=>a+(u.d.tz||0),0);
   $('#ov').innerHTML=k(vn(reg.length),'tài khoản đăng ký')+k(vn(reg.filter(u=>(u.d.createdAt||0)>=t0).length),'đăng ký hôm nay')+k(vn(reg.filter(u=>(u.d.createdAt||0)>=w0).length),'đăng ký 7 ngày')+k(vn(USERS.filter(u=>(u.d.updatedAt||0)>=t0).length),'người chơi hôm nay')
-   +k(vn(guests.length),'chơi thử chưa đặt PIN')+k(vn(reg.reduce((a,u)=>a+curedOf(u.d),0)),'zombie đã chữa')+k(vn(cq.size),'mã phát hôm nay')+k(vn(tz),'TZ khách đang giữ');
+   +k(vn(guests.length),'chơi thử chưa đặt PIN')+k(vn(reg.reduce((a,u)=>a+curedOf(u.d),0)),'zombie đã chữa')+k(vn(cq.size),'mã phát hôm nay')+k(vn(tz),'TZ khách đang giữ')+k(vn(USERS.reduce((a,u)=>a+(u.d.shopSpent||0),0)),'TZ đã tiêu ở Shop')+k(vn(USERS.reduce((a,u)=>a+((u.d.shopLog||[]).filter(x=>x.at>=t0).length),0)),'lượt mua Shop hôm nay');
   $('#ovNote').textContent=`TZ khách đang giữ ứng với khoảng ${vn(tz*10)}đ giá bán topping nếu đổi hết. ${reg.filter(u=>u.d.locked).length} tài khoản đang khoá.`;
   const g=gs.exists?gs.data():{};$('#gQuick').value=g.pQuick??30;$('#gMid').value=g.pMid??50;$('#gCap').value=g.cap??45;$('#gTop').value=g.topDay??1;$('#gFirst').checked=g.firstFast??true;$('#gSeason').value=g.season||'halloween';
   $('#stEmails').value=staffCfg.emails.join('\n');$('#stAdmins').value=staffCfg.admins.join('\n');

@@ -32,8 +32,8 @@ h2,h3{margin:0;text-wrap:balance}
 .app{height:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column}
 .screen{flex:1;overflow-y:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 28px;display:flex;flex-direction:column;gap:18px}
 .screen>*{flex-shrink:0}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border-top:1px solid var(--line);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-.tabs button{padding:12px 4px 13px;font-family:var(--hud);font-weight:700;font-size:13px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border-top:1px solid var(--line);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.tabs button{padding:12px 2px 13px;font-family:var(--hud);font-weight:700;font-size:12px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
 .tabs button[aria-selected="true"]{color:var(--sodium);box-shadow:inset 0 2px 0 var(--sodium)}
 
 .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -179,6 +179,25 @@ h2,h3{margin:0;text-wrap:balance}
 .bubble small{display:block;font-family:var(--hud);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
 .flashfx{position:absolute;inset:0;background:var(--flash);opacity:0;pointer-events:none}
 .flashfx.go{animation:fl .38s ease-out}
+/* Shop */
+.shop{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.item{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 8px;color:var(--fg)}
+.item[aria-pressed="true"]{border-color:var(--sodium);box-shadow:0 0 0 1px var(--sodium)}
+.item b{font-size:15px}.item small{color:var(--muted);font-size:12px;line-height:1.35}
+.item .pv{width:72px;height:72px;display:grid;place-items:center}
+.item .pv img{width:64px;height:64px;border-radius:50%;background:var(--panel-2);border:2px solid var(--line)}
+.item .price{font-family:var(--hud);font-weight:700;font-size:13px;color:var(--sodium)}
+.item[data-arm] .price{color:#fff;background:var(--sodium-ink);border-radius:8px;padding:2px 6px}
+.item:disabled{opacity:.45}
+.wallet1{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-family:var(--hud)}
+.wallet1 b{font-size:22px;color:var(--sodium)}
+/* Khung avatar */
+.av-f_neon{border-color:#b47bff!important;box-shadow:0 0 0 2px #b47bff,0 0 14px #b47bff}
+.av-f_ice{border-color:#7ad7ff!important;box-shadow:0 0 0 2px #c9f2ff,0 0 14px #7ad7ff}
+.av-f_pink{border-color:#ff5fb3!important;box-shadow:0 0 0 2px #ffb3d9,0 0 12px #ff5fb3}
+.av-f_pumpkin{border-color:#ff8a2b!important;box-shadow:0 0 0 2px #ffd36b,0 0 16px #ff6a00;animation:avfire 1.2s ease-in-out infinite alternate}
+.av-f_gold{border:3px solid transparent!important;background:linear-gradient(var(--panel-2),var(--panel-2)) padding-box,conic-gradient(#ffd36b,#b8860b,#fff3b0,#c99a2e,#ffd36b) border-box!important;box-shadow:0 0 16px rgba(255,211,107,.7)}
+@keyframes avfire{from{box-shadow:0 0 0 2px #ffd36b,0 0 10px #ff6a00}to{box-shadow:0 0 0 2px #ffd36b,0 0 22px #ff8a2b}}
 @keyframes fl{0%{opacity:.95}100%{opacity:0}}
 .result{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);max-width:420px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px #000a}
 .result h3{font-family:var(--display);font-size:22px;font-weight:400}
@@ -199,6 +218,7 @@ h2,h3{margin:0;text-wrap:balance}
   <main class="screen" id="screen"></main>
   <nav class="tabs" role="tablist" aria-label="Vùng An Toàn">
     <button role="tab" id="tab-home" data-tab="home" aria-selected="true">Vùng An Toàn</button>
+    <button role="tab" id="tab-shop" data-tab="shop" aria-selected="false">Shop</button>
     <button role="tab" id="tab-bag" data-tab="bag" aria-selected="false">Kho đồ</button>
     <button role="tab" id="tab-stats" data-tab="stats" aria-selected="false">Chỉ số</button>
   </nav>
@@ -285,7 +305,7 @@ const FLASH_MAX=12, REGEN_MS=5*60*1000;
 /* ---------- Trạng thái (lưu trên máy người chơi) ---------- */
 const KEY='zonez.v1';
 const DEF={tz:0,flash:FLASH_MAX,flashAt:Date.now(),frames:{},sinceFrame:0,codes:[],seen:{},cured:{},hunts:[],
- cfg:{pQuick:30,pMid:50,cap:45,firstFast:true,topDay:1},season:'halloween',lastHuntDay:'',topLog:{},mute:false,profile:null,infectedUntil:0,bites:0};
+ cfg:{pQuick:30,pMid:50,cap:45,firstFast:true,topDay:1},season:'halloween',lastHuntDay:'',topLog:{},mute:false,profile:null,infectedUntil:0,bites:0,owned:{},equip:{},charm:0,shopLog:[],shopSpent:0};
 let S;
 try{const raw=JSON.parse(localStorage.getItem(KEY)||'{}');S=Object.assign(JSON.parse(JSON.stringify(DEF)),raw);S.cfg=Object.assign({},DEF.cfg,raw.cfg||{})}catch(e){S=JSON.parse(JSON.stringify(DEF))}
 let onSave=()=>{};const saveLocal=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};const save=()=>{S.updatedAt=Date.now();saveLocal();onSave()};
@@ -319,16 +339,16 @@ const screen=$('#screen');
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;render()}));
 function render(){regen();saveLocal();
  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
- screen.innerHTML=tab==='home'?homeHTML():tab==='bag'?bagHTML():statsHTML();screen.scrollTop=0;bind()}
+ screen.innerHTML=tab==='home'?homeHTML():tab==='bag'?bagHTML():tab==='shop'?shopHTML():statsHTML();screen.scrollTop=0;bind()}
 
 function pipsHTML(){let s='';for(let i=0;i<FLASH_MAX;i++)s+=`<i class="${i<S.flash?'on':''}"></i>`;return s}
 function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.lastHuntDay!==dayKey();
  const rows=allZombies().map(z=>`<div class="row"><div class="nm ti"><img src="${face(z.id,S.cured[z.id]?'h':'z')}" alt="" width="48" height="48" style="${S.seen[z.id]?'':'filter:brightness(0);opacity:.45'}"><span><b>${esc(z.name)}</b><span class="tier t${z.tier}">${TIERS[z.tier].name}</span></span></div><div class="meta">${S.cured[z.id]?`chữa ${S.cured[z.id]}`:S.seen[z.id]?`gặp ${S.seen[z.id]}`:'chưa gặp'}</div></div>`).join('');
  const inf=infected(),pf=S.profile||{name:'Đạo hữu',avatar:'trasua'};
  return `<div class="top"><div><div class="wm">ZONE <span>Z</span></div><span class="by">THEZONE · bản test</span></div><button class="chip" id="mute" type="button">Âm thanh: ${S.mute?'tắt':'bật'}</button></div>
- <button class="me${inf?' inf':''}" id="meBtn" type="button"><img src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>${inf?`Nhiễm độc · còn <span id="infT">${mmss(S.infectedUntil-Date.now())}</span>`:`Đã cứu ${Object.values(S.cured).reduce((a,b)=>a+b,0)} người · bấm để đổi nhân vật`}</small></span></button>
+ <button class="me${inf?' inf':''}" id="meBtn" type="button"><img class="${avClass()}" src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>${inf?`Nhiễm độc · còn <span id="infT">${mmss(S.infectedUntil-Date.now())}</span>`:`Đã cứu ${Object.values(S.cured).reduce((a,b)=>a+b,0)} người · bấm để đổi nhân vật`}</small></span></button>
  ${inf?`<div class="infbox"><h3>Bạn đang nhiễm độc</h3><ul><li>Nhân vật của bạn hóa zombie.</li><li>TZ nhận được khi chữa zombie giảm một nửa.</li><li>Hết sau <b id="infT2">${mmss(S.infectedUntil-Date.now())}</b>, hoặc giải độc ngay tại quầy.</li></ul>
- <p class="note" style="margin:0">Ghé quầy THEZONE, đọc nickname <b>${esc(pf.name)}</b> cho nhân viên để giải độc ngay.</p>${CLOUD.user?'<button class="btn" id="askCure" type="button">Nhờ bạn chữa: gửi link qua Zalo, Messenger</button>':'<p class="note" style="margin:0">Khi bật tài khoản: gửi link nhờ bạn bè chụp flash để chữa.</p>'}</div>`:''}
+ <p class="note" style="margin:0">Ghé quầy THEZONE, đọc nickname <b>${esc(pf.name)}</b> cho nhân viên để giải độc ngay.</p><button class="btn" id="goShop" type="button">Mua thuốc giải độc ở Shop (300 TZ)</button>${CLOUD.user?'<button class="btn" id="askCure" type="button">Nhờ bạn chữa: gửi link qua Zalo, Messenger</button>':'<p class="note" style="margin:0">Khi bật tài khoản: gửi link nhờ bạn bè chụp flash để chữa.</p>'}</div>`:''}
  <p class="lede">Zombie tràn khắp phố. <b>THEZONE là Vùng An Toàn.</b> Không đánh, chỉ chụp: đèn flash giúp họ tỉnh lại. Zombie càng gần, flash càng mạnh, nhưng đừng để bị cắn.</p>
  <p class="note" style="margin:0">Bật camera và xoay điện thoại để tìm zombie quanh bạn. Chơi ở chỗ hơi tối sẽ ghê hơn.</p>
  <div class="season"><div class="moon" aria-hidden="true"></div><div class="eyebrow">Mùa đang mở · ${esc(se.dates)}</div><h3>${esc(se.name)}</h3><p>Boss mùa: ${esc(se.boss.name)} · 3 frame giới hạn</p></div>
@@ -392,6 +412,8 @@ function bind(){const on=(id,ev,fn)=>{const el=document.getElementById(id);if(el
  on('meBtn','click',()=>profileSheet(false));
  on('askCure','click',askFriendCure);
  on('mute','click',()=>{S.mute=!S.mute;render()});
+ screen.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buy(b)));
+ on('goShop','click',()=>{tab='shop';render()});
  screen.querySelectorAll('[data-top]').forEach(b=>b.addEventListener('click',()=>redeem(b.dataset.top)));
  screen.querySelectorAll('[data-frame]').forEach(b=>b.addEventListener('click',()=>frameSheet(b.dataset.frame)));
  screen.querySelectorAll('[data-code]').forEach(b=>b.addEventListener('click',()=>{const c=S.codes.find(x=>x.code===b.dataset.code);if(c)codeSheet(c)}))}
@@ -410,6 +432,66 @@ function qr(cv,seed){const n=25,ctx=cv.getContext('2d');cv.width=n*8;cv.height=n
  ctx.fillStyle='#0b1019';const fin=(x,y)=>{ctx.fillRect(x*8,y*8,56,56);ctx.fillStyle='#fff';ctx.fillRect(x*8+8,y*8+8,40,40);ctx.fillStyle='#0b1019';ctx.fillRect(x*8+16,y*8+16,24,24)};
  for(let y=1;y<n-1;y++)for(let x=1;x<n-1;x++){const inF=(x<9&&y<9)||(x>n-10&&y<9)||(x<9&&y>n-10);if(!inF&&r()<.48)ctx.fillRect(x*8,y*8,8,8)}
  fin(1,1);fin(n-8,1);fin(1,n-8)}
+/* ---------- Shop: tiêu TZ cho đồ trong game ---------- */
+const SHOP={
+ use:[{id:'flash3',name:'+3 flash',price:80,desc:'Nạp thêm 3 phát ngay.'},
+  {id:'flashFull',name:'Nạp đầy flash',price:200,desc:'Đầy 12 phát ngay.'},
+  {id:'antidote',name:'Thuốc giải độc',price:300,desc:'Hết nhiễm độc ngay, nhân vật trở lại hình người.'},
+  {id:'charm',name:'Bùa hộ mệnh',price:250,desc:'Đỡ 1 cú cắn: không mất flash, không nhiễm độc. Giữ tối đa 3.'}],
+ frame:[{id:'f_basic',name:'Mặc định',price:0},{id:'f_neon',name:'Neon tím',price:300},{id:'f_ice',name:'Băng xanh',price:300},
+  {id:'f_pink',name:'Hồng trà sữa',price:300},{id:'f_pumpkin',name:'Lửa bí ngô',price:500},{id:'f_gold',name:'Vàng CEO',price:800}],
+ scope:[{id:'s_basic',name:'Cổ điển',price:0,col:'rgba(246,250,255,.55)',lock:'#cde86b',st:'basic'},
+  {id:'s_neon',name:'Neon hồng',price:250,col:'#ff5fb3',lock:'#ffb3e6',st:'dash'},
+  {id:'s_ice',name:'Kim cương',price:350,col:'#7ad7ff',lock:'#d6f5ff',st:'diamond'},
+  {id:'s_pumpkin',name:'Nanh bí ngô',price:450,col:'#ff8a2b',lock:'#ffd36b',st:'fang'},
+  {id:'s_gold',name:'Vàng CEO',price:700,col:'#ffd36b',lock:'#fff3b0',st:'double'}],
+ fx:[{id:'x_basic',name:'Flash trắng',price:0,flash:'#f6faff',parts:['#ffd36b','#f6faff'],shape:'dot'},
+  {id:'x_star',name:'Sao vàng',price:300,flash:'#fff1c2',parts:['#ffd36b','#fff3b0'],shape:'star'},
+  {id:'x_heart',name:'Tim hồng',price:300,flash:'#ffd6ec',parts:['#ff5fb3','#ffb3d9'],shape:'heart'},
+  {id:'x_bolt',name:'Sét tím',price:450,flash:'#e2d4ff',parts:['#b47bff','#7ad7ff'],shape:'spark'},
+  {id:'x_pumpkin',name:'Bí ngô',price:500,flash:'#ffdcb8',parts:['#ff8a2b','#ffd36b'],shape:'pumpkin'}]};
+const SHOP_ALL=Object.values(SHOP).flat();
+const eqId=k=>(S.equip&&S.equip[k])||SHOP[k][0].id;
+const eqItem=k=>SHOP[k].find(x=>x.id===eqId(k))||SHOP[k][0];
+const avClass=()=>'av-'+eqId('frame');
+function scopeSVG(it){const c=it.col,R=20,ticks=[0,90,180,270];let s=`<svg viewBox="-36 -36 72 72" width="64" height="64">`;
+ if(it.st==='dash')s+=`<circle r="${R}" fill="none" stroke="${c}" stroke-width="3" stroke-dasharray="7 5"/>`;else s+=`<circle r="${R}" fill="none" stroke="${c}" stroke-width="3"/>`;
+ if(it.st==='double')s+=`<circle r="${R+6}" fill="none" stroke="${c}" stroke-width="1.5"/>`;
+ for(const a of ticks){const r=a*Math.PI/180,x1=Math.cos(r)*R*1.15,y1=Math.sin(r)*R*1.15,x2=Math.cos(r)*R*1.55,y2=Math.sin(r)*R*1.55;
+  if(it.st==='diamond')s+=`<rect x="${(x1+x2)/2-4}" y="${(y1+y2)/2-4}" width="8" height="8" fill="${c}" transform="rotate(45 ${(x1+x2)/2} ${(y1+y2)/2})"/>`;
+  else if(it.st==='fang'){const px=-Math.sin(r)*5,py=Math.cos(r)*5;s+=`<path d="M${x2+px} ${y2+py}L${x2-px} ${y2-py}L${x1} ${y1}Z" fill="${c}"/>`}
+  else s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="3"/>`}
+ return s+'</svg>'}
+function shapeSVG(shape,c,x,y,z){z=z||1;if(shape==='star'){let d='';for(let i=0;i<10;i++){const r=i%2?3.2*z:7.5*z,a=-Math.PI/2+i*Math.PI/5;d+=(i?'L':'M')+(x+Math.cos(a)*r).toFixed(1)+' '+(y+Math.sin(a)*r).toFixed(1)}return `<path d="${d}Z" fill="${c}"/>`}
+ if(shape==='heart')return `<path d="M${x} ${y+6*z}C${x-9*z} ${y},${x-5*z} ${y-7*z},${x} ${y-3*z}C${x+5*z} ${y-7*z},${x+9*z} ${y},${x} ${y+6*z}Z" fill="${c}"/>`;
+ if(shape==='spark')return `<path d="M${x-2*z} ${y-8*z}L${x+3*z} ${y-1*z}L${x} ${y}L${x+2*z} ${y+8*z}L${x-3*z} ${y+1*z}L${x} ${y}Z" fill="${c}"/>`;
+ if(shape==='pumpkin')return `<ellipse cx="${x}" cy="${y}" rx="${7*z}" ry="${5.5*z}" fill="${c}"/><rect x="${x-1*z}" y="${y-8*z}" width="${2*z}" height="${3*z}" fill="#5fa04e"/>`;
+ return `<circle cx="${x}" cy="${y}" r="${4*z}" fill="${c}"/>`}
+function fxSVG(it){return `<svg viewBox="-36 -36 72 72" width="64" height="64"><defs><radialGradient id="g${it.id}"><stop offset="0" stop-color="${it.flash}"/><stop offset="1" stop-color="${it.flash}" stop-opacity="0"/></radialGradient></defs><circle r="34" fill="url(#g${it.id})"/>${shapeSVG(it.shape,it.parts[0],-14,-10)}${shapeSVG(it.shape,it.parts[1],15,-4)}${shapeSVG(it.shape,it.parts[0],0,16)}</svg>`}
+function useOk(it){if(it.id==='flash3'||it.id==='flashFull')return S.flash<FLASH_MAX?'':'Flash đang đầy';if(it.id==='antidote')return infected()?'':'Bạn không nhiễm độc';if(it.id==='charm')return (S.charm||0)<3?'':'Đã giữ 3 bùa';return ''}
+function itemHTML(kind,it){const owned=it.price===0||(S.owned&&S.owned[it.id]),on=kind!=='use'&&eqId(kind)===it.id;
+ let pv='';if(kind==='frame')pv=`<img class="av-${it.id}" src="${avatarSrc()}" alt="">`;else if(kind==='scope')pv=scopeSVG(it);else if(kind==='fx')pv=fxSVG(it);
+ else pv=`<svg viewBox="-36 -36 72 72" width="64" height="64">${it.id==='antidote'?'<rect x="-9" y="-22" width="18" height="10" rx="3" fill="#7fd18b"/><path d="M-15 -12h30v26a12 12 0 0 1-12 12h-6a12 12 0 0 1-12-12z" fill="#2f8a52"/><path d="M-4 0h8M0 -4v8" stroke="#fff" stroke-width="3"/>':it.id==='charm'?'<path d="M0 -24L18 -14V4C18 16 8 22 0 26C-8 22-18 16-18 4V-14Z" fill="#ffb547"/><path d="M-7 2l5 5l10-12" stroke="#1f1404" stroke-width="4" fill="none"/>':`<circle r="22" fill="none" stroke="#f6faff" stroke-width="4"/><circle r="12" fill="#f6faff"/><text y="34" text-anchor="middle" font-size="11" fill="#ffb547" font-family="sans-serif">${it.id==='flash3'?'+3':'12/12'}</text>`}</svg>`;
+ const why=kind==='use'?useOk(it):'';
+ const label=kind==='use'?(why||`${fmt(it.price)} TZ`):on?'Đang dùng':owned?'Dùng':`${fmt(it.price)} TZ`;
+ return `<button class="item" type="button" data-buy="${it.id}" data-kind="${kind}" aria-pressed="${on}"${why?' disabled':''}><div class="pv">${pv}</div><b>${esc(it.name)}</b>${it.desc?`<small>${esc(it.desc)}</small>`:''}<span class="price">${label}</span></button>`}
+function shopHTML(){const sec=(k,t,note)=>`<div class="sec"><h3>${t}</h3>${note?`<p class="note">${note}</p>`:''}<div class="shop">${SHOP[k].map(it=>itemHTML(k,it)).join('')}</div></div>`;
+ return `<h2 class="wm" style="font-size:26px">Shop</h2>
+ <p class="lede">Tiêu TZ đồng cho đồ trong game. Topping thật vẫn đổi ở Kho đồ.</p>
+ <div class="wallet1"><span>TZ đồng</span><b>${fmt(S.tz)}</b></div>
+ ${sec('use','Dùng ngay',`Bùa hộ mệnh đang giữ: <b>${S.charm||0}</b>/3`)}
+ ${sec('frame','Khung avatar','Hiện quanh avatar ở màn hình chính và lúc dò zombie.')}
+ ${sec('scope','Ống ngắm','Đổi kiểu vòng ngắm lúc chụp.')}
+ ${sec('fx','Hiệu ứng flash','Đổi màu đèn flash và hạt sáng khi chữa xong.')}`}
+function buy(btn){const id=btn.dataset.buy,kind=btn.dataset.kind,it=SHOP_ALL.find(x=>x.id===id);if(!it)return;
+ const owned=it.price===0||(S.owned&&S.owned[id]);
+ if(kind!=='use'&&owned){S.equip=Object.assign({},S.equip,{[kind]:id});save();tone(880,.08);render();return}
+ if(S.tz<it.price){toast(`Thiếu ${fmt(it.price-S.tz)} TZ. Dò thêm zombie nhé!`);return}
+ if(!btn.dataset.arm){screen.querySelectorAll('[data-arm]').forEach(b=>{delete b.dataset.arm});btn.dataset.arm='1';btn.querySelector('.price').textContent=`Bấm lần nữa: −${fmt(it.price)} TZ`;setTimeout(()=>{if(btn.isConnected&&btn.dataset.arm)render()},3500);return}
+ S.tz-=it.price;S.shopSpent=(S.shopSpent||0)+it.price;S.shopLog=(S.shopLog||[]).concat([{id,price:it.price,at:Date.now()}]).slice(-100);
+ if(kind==='use'){if(id==='flash3'){S.flash=Math.min(FLASH_MAX,S.flash+3);S.flashAt=Date.now()}else if(id==='flashFull'){S.flash=FLASH_MAX;S.flashAt=Date.now()}else if(id==='antidote')S.infectedUntil=0;else if(id==='charm')S.charm=(S.charm||0)+1}
+ else{S.owned=Object.assign({},S.owned,{[id]:Date.now()});S.equip=Object.assign({},S.equip,{[kind]:id})}
+ tone(660,.1);setTimeout(()=>tone(990,.15),90);toast(kind==='use'?`Đã dùng: ${it.name}`:`Đã mua và đang dùng: ${it.name}`);save();render()}
 function profileSheet(first){const sh=$('#sheet');let pick=(S.profile&&S.profile.avatar)||'trasua';
  const nick=userNick(),cloud=!!FB_CONFIG;
  const grid=()=>AVATARS.map(id=>`<button type="button" data-av="${id}" aria-pressed="${id===pick}"><img src="${face(id,'h')}" alt=""></button>`).join('');
@@ -492,6 +574,22 @@ function geom(d,t){const n=1-d,base=Math.min(W*1.05,Hh*.62);
  const top=feet-size*(452/512)-Math.abs(Math.sin(t*5.5))*size*.018;
  const hd=HEAD[HS.z&&HS.z.id];if(hd)return{size,cx,top,hx:cx+size*(hd[0]-.5),hy:top+size*hd[1],hr:size*.15,n};
  return{size,cx,top,hx:cx-size*.043,hy:top+size*.365,hr:size*.195,n}}
+function drawScope(rx,ry,R,on,now){const it=eqItem('scope'),c=on?it.lock:it.col;ctx.save();ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=on?4:2.5;
+ if(it.st!=='basic'){ctx.shadowColor=it.col;ctx.shadowBlur=on?14:8}
+ if(it.st==='dash'){ctx.setLineDash([12,9]);ctx.lineDashOffset=-now/25}
+ ctx.beginPath();ctx.arc(rx,ry,R,0,7);ctx.stroke();ctx.setLineDash([]);
+ if(it.st==='double'){ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(rx,ry,R+9,0,7);ctx.stroke();ctx.lineWidth=on?4:2.5}
+ const spin=it.st==='diamond'?now/1400:0;
+ for(const a0 of[0,Math.PI/2,Math.PI,Math.PI*1.5]){const a=a0+spin,x1=rx+Math.cos(a)*R*1.15,y1=ry+Math.sin(a)*R*1.15,x2=rx+Math.cos(a)*R*1.5,y2=ry+Math.sin(a)*R*1.5;
+  if(it.st==='diamond'){const mx=(x1+x2)/2,my=(y1+y2)/2,d=on?8:6;ctx.beginPath();ctx.moveTo(mx,my-d);ctx.lineTo(mx+d,my);ctx.lineTo(mx,my+d);ctx.lineTo(mx-d,my);ctx.closePath();ctx.fill()}
+  else if(it.st==='fang'){const px=-Math.sin(a)*7,py=Math.cos(a)*7;ctx.beginPath();ctx.moveTo(x2+px,y2+py);ctx.lineTo(x2-px,y2-py);ctx.lineTo(x1,y1);ctx.closePath();ctx.fill()}
+  else{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}}
+ ctx.restore()}
+function drawShape(shape,x,y,z){if(shape==='star'){ctx.beginPath();for(let i=0;i<10;i++){const r=i%2?3.2*z:7.5*z,a=-Math.PI/2+i*Math.PI/5;ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r)}ctx.closePath();ctx.fill();return}
+ if(shape==='heart'){ctx.beginPath();ctx.moveTo(x,y+6*z);ctx.bezierCurveTo(x-9*z,y,x-5*z,y-7*z,x,y-3*z);ctx.bezierCurveTo(x+5*z,y-7*z,x+9*z,y,x,y+6*z);ctx.fill();return}
+ if(shape==='spark'){ctx.beginPath();ctx.moveTo(x-2*z,y-8*z);ctx.lineTo(x+3*z,y-z);ctx.lineTo(x,y);ctx.lineTo(x+2*z,y+8*z);ctx.lineTo(x-3*z,y+z);ctx.lineTo(x,y);ctx.closePath();ctx.fill();return}
+ if(shape==='pumpkin'){ctx.beginPath();ctx.ellipse(x,y,7*z,5.5*z,0,0,7);ctx.fill();ctx.fillStyle='#5fa04e';ctx.fillRect(x-z,y-8*z,2*z,3*z);return}
+ ctx.beginPath();ctx.arc(x,y,3*z,0,7);ctx.fill()}
 function drawSprite(g,t,k,alpha){const sp=SPR[HS.z.id];if(!sp)return;ctx.save();const piv=g.top+g.size*.88;
  ctx.translate(g.cx,piv);ctx.rotate(Math.sin(t*5.5)*.04*(1-k));ctx.translate(-g.cx,piv*-1);
  if('filter' in ctx)ctx.filter=`brightness(${(.5+.5*g.n).toFixed(2)})`;
@@ -504,7 +602,7 @@ const HS={}; // trạng thái lượt săn
 const ui={scan:$('#hudScan'),aim:$('#hudAim'),res:$('#result'),bub:$('#bubble'),heat:$('#heat'),heatLbl:$('#heatLbl'),hint:$('#hint')};
 const HINTS=['Nó vòng ra sau lưng bạn rồi, thử quay máy lại.','Zombie thích chỗ tối. Thử hướng về góc ít đèn.','Tiếng động hút zombie. Đứng yên một chút.','Thử dò chỗ khác, tín hiệu ở đây yếu.'];
 function setPhase(p){HS.phase=p;ui.scan.hidden=p!=='scan';ui.aim.hidden=p!=='aim';ui.res.hidden=p!=='result';if(p!=='aim'&&p!=='cure')ui.bub.hidden=true}
-function hudTop(){$('#hudFlash').textContent=`FLASH ${S.flash}/${FLASH_MAX}`;$('#hudTz').textContent=`TZ ${fmt(S.tz)}`;$('#hudAv').src=avatarSrc();$('#infChip').hidden=!infected()}
+function hudTop(){$('#hudFlash').textContent=`FLASH ${S.flash}/${FLASH_MAX}`;$('#hudTz').textContent=`TZ ${fmt(S.tz)}`;$('#hudAv').src=avatarSrc();$('#hudAv').className=avClass();$('#infChip').hidden=!infected()}
 const thump=()=>{tone(58,.13,'sine',.22);setTimeout(()=>tone(50,.11,'sine',.16),130)};
 let raf=0,lastT=0;
 function startHunt(){if(CLOUD.locked){toast('Tài khoản đang tạm khoá. Liên hệ quầy THEZONE.');return}ac();regen();resize();startSensors();startCam();try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>WAKE=w).catch(()=>{})}catch(e){}DISP=getComputedStyle(document.documentElement).getPropertyValue('--display');const now=performance.now();
@@ -524,14 +622,14 @@ function drawHp(){const T=TIERS[HS.tier];let s='';for(let i=0;i<T.hp;i++)s+=`<i 
 function pop(text,color){HS.pops.push({text,color,at:performance.now()})}
 function surge(now){HS.mode='lunge';HS.modeUntil=now+340;groan();buzz(90)}
 function shoot(){if(HS.phase!=='aim')return;const now=performance.now();if(now<HS.cdUntil){buzz(8);return}buzz(25);
- if(S.flash<=0){$('#aimHint').textContent='Hết flash. Về Vùng An Toàn nạp tại quầy.';tone(200,.2,'square',.04);return}
- S.flash--;save();hudTop();const fx=$('#flashfx');fx.classList.remove('go');void fx.offsetWidth;fx.classList.add('go');shutter();HS.cdUntil=now+650;HS.flashAt=now;
+ if(S.flash<=0){$('#aimHint').textContent='Hết flash. Mua ở Shop hoặc nạp tại quầy.';tone(200,.2,'square',.04);return}
+ S.flash--;save();hudTop();const fx=$('#flashfx');fx.style.background=eqItem('fx').flash;fx.classList.remove('go');void fx.offsetWidth;fx.classList.add('go');shutter();HS.cdUntil=now+650;HS.flashAt=now;
  const g=HS.g;if(!g)return;
  if(!onTarget(g)){pop('Lệch khung!','#ff6767');surge(now);return}
  const p=chanceAt(HS.d,HS.tier);
  if(Math.random()<p){HS.hp--;drawHp();const close=HS.d<.25;if(close)HS.perfects++;buzz(40);pop(close?'CẬN MẶT!':'TRÚNG!',close?'#ffd36b':'#f6faff');
   if(HS.hp<=0){HS.cureAt=now;HS.gFreeze=g;setPhase('cure');tone(660,.15);setTimeout(()=>tone(990,.25),120);ui.bub.innerHTML=esc(HS.z.thanks);ui.bub.hidden=false;
-   for(let i=0;i<30;i++)HS.parts.push({a:rnd(0,6.28),v:rnd(60,220),c:Math.random()<.5?'#ffd36b':'#f6faff'})}
+   {const X=eqItem('fx');for(let i=0;i<(X.shape==='dot'?30:22);i++)HS.parts.push({a:rnd(0,6.28),v:rnd(60,220),c:X.parts[i%2],s:X.shape,z:rnd(.8,1.5),r:rnd(-3,3)})}}
   else{HS.d=Math.min(1,HS.d+.14);HS.mode='pause';HS.modeUntil=now+550}}
  else{pop(`Chưa đủ sáng · ${Math.round(p*100)}%`,'#ffb547');surge(now)}}
 function finish(result){if(HS.done)return;HS.done=true;const rec={wait:HS.wait==null?null:+HS.wait.toFixed(2),rerolls:HS.rerolls,result,tier:HS.tier||0,tz:0,frame:null};
@@ -543,6 +641,9 @@ function finish(result){if(HS.done)return;HS.done=true;const rec={wait:HS.wait==
   html=`<div class="who-img"><img src="${face(HS.z.id,'h')}" alt="" width="120" height="120" style="border-radius:20px"></div><h3>Đã cứu 1 người</h3><p class="who">${esc(HS.z.name)} · ${T.name} · gặp sau ${HS.wait.toFixed(1)} giây${HS.perfects?` · ${HS.perfects} cú cận mặt`:''}</p>
    <div class="loot"><div><span>TZ đồng${HS.perfects?` (+${Math.round(bonus*100)}% can đảm)`:''}${sick?' · nhiễm độc −50%':''}</span><b>+${fmt(tz)}</b></div>${items.join('')}</div>
    <p class="note" style="margin:0">${f?'':`Frame: chưa rơi. Còn ${30-S.sinceFrame} lần chữa nữa là chắc chắn có.`}</p>`}
+ else if(result==='bitten'&&(S.charm||0)>0){S.charm--;rec.charm=true;
+  html=`<div class="who-img"><img src="${avatarSrc()}" alt="" width="120" height="120"></div><h3>Bùa hộ mệnh đỡ cú cắn!</h3><p class="who">${esc(HS.z.name)} áp sát nhưng bùa đã chặn lại.</p>
+   <div class="loot"><div><span>Bùa hộ mệnh còn</span><b>${S.charm}/3</b></div><div><span>Flash và nhân vật</span><b>an toàn</b></div></div>`}
  else if(result==='bitten'){const lost=Math.min(2,S.flash);S.flash-=lost;S.infectedUntil=Math.max(S.infectedUntil,Date.now())+INFECT_MS;S.bites=(S.bites||0)+1;
   html=`<div class="who-img"><img src="${avatarSrc()}" alt="" width="120" height="120"></div><h3>Bạn bị cắn!</h3><p class="who">${esc(HS.z.name)} áp sát trước khi bạn kịp chụp.</p>
    <div class="loot"><div><span>Flash</span><b>−${lost}</b></div><div class="rare"><span>Nhiễm độc 30 phút: nhân vật hóa zombie, TZ giảm một nửa</span></div></div>
@@ -600,9 +701,8 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
    const on=onTarget(g),R=Math.max(26,aimTol(g)),p=chanceAt(HS.d,HS.tier),rx=W/2,ry=g.hy;
    {const gp=W/2-g.hx;if(Math.abs(gp)<aimTol(g)*2.2)ASSIST=clamp(ASSIST+gp/(W/FOV)*.12,-8,8);else ASSIST*=.92}
    $('#shoot').classList.toggle('lock',on);
-   if(on){ctx.font=`16px ${DISP}`;ctx.textAlign='center';ctx.fillStyle='#cde86b';ctx.fillText('KHÓA',rx,ry-R*1.5-10)}
-   ctx.strokeStyle=on?'#cde86b':'rgba(246,250,255,.45)';ctx.lineWidth=on?4:2;ctx.beginPath();ctx.arc(rx,ry,R,0,7);ctx.stroke();
-   for(const a of[0,Math.PI/2,Math.PI,Math.PI*1.5]){ctx.beginPath();ctx.moveTo(rx+Math.cos(a)*R*1.15,ry+Math.sin(a)*R*1.15);ctx.lineTo(rx+Math.cos(a)*R*1.5,ry+Math.sin(a)*R*1.5);ctx.stroke()}
+   if(on){ctx.font=`16px ${DISP}`;ctx.textAlign='center';ctx.fillStyle=eqItem('scope').lock;ctx.fillText('KHÓA',rx,ry-R*1.5-10)}
+   drawScope(rx,ry,R,on,now);
    if(now<HS.cdUntil){const q=1-(HS.cdUntil-now)/650;ctx.strokeStyle='#ffb547';ctx.lineWidth=3;ctx.beginPath();ctx.arc(rx,ry,R+8,-Math.PI/2,-Math.PI/2+q*6.283);ctx.stroke()}
    ctx.font=`18px ${DISP}`;ctx.textAlign='center';ctx.fillStyle=p<.35?'#ff6767':p<.7?'#ffb547':'#7fd18b';ctx.fillText(`${Math.round(p*100)}%`,rx,ry+R*1.5+24);
    if(g.hx<0||g.hx>W){const L=g.hx<0,ax=L?26:W-26,ay=clamp(g.hy,140,Hh*.7),pl=.6+.4*Math.sin(now/150);ctx.save();ctx.globalAlpha=pl;ctx.fillStyle='#ff4d4d';ctx.beginPath();
@@ -612,7 +712,7 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
    if(now-HS.uiAt>120){HS.uiAt=now;$('#distM').textContent=(HS.d*15).toFixed(1)+' m';const ce=$('#chance');ce.textContent=Math.round(p*100)+'%';ce.style.color=p<.35?'#ff6767':p<.7?'#ffb547':'#7fd18b';
     $('#distBar').style.width=((1-HS.d)*100).toFixed(0)+'%';
     const off=g.hx<0?'left':g.hx>W?'right':null;$('#aimHint').textContent=off?(off==='left'?'Nó ở bên TRÁI! '+(GYRO?'Xoay máy sang trái':'Vuốt sang phải'):'Nó ở bên PHẢI! '+(GYRO?'Xoay máy sang phải':'Vuốt sang trái')):!on?(GYRO?'Xoay máy đưa đầu nó vào khung tròn':'Vuốt ngang đưa đầu nó vào khung tròn'):HS.d>.66?'Còn xa, flash yếu. Chờ thêm hay chụp liều?':HS.d>.3?'Vừa tầm. Chụp đi!':'SÁT MẶT RỒI! Chụp ngay!'}}
-  if(ph==='cure'){const p=(now-HS.cureAt)/1000;for(const q of HS.parts){ctx.fillStyle=q.c;ctx.globalAlpha=clamp(1-p/1.6,0,1);ctx.beginPath();ctx.arc(g.hx+Math.cos(q.a)*q.v*p,g.hy+Math.sin(q.a)*q.v*p,3,0,7);ctx.fill()}ctx.globalAlpha=1;if(p>=1.8)finish('cure')}
+  if(ph==='cure'){const p=(now-HS.cureAt)/1000;for(const q of HS.parts){ctx.fillStyle=q.c;ctx.globalAlpha=clamp(1-p/1.6,0,1);const x=g.hx+Math.cos(q.a)*q.v*p,y=g.hy+Math.sin(q.a)*q.v*p;if(!q.s||q.s==='dot'){ctx.beginPath();ctx.arc(x,y,3,0,7);ctx.fill()}else{ctx.save();ctx.translate(x,y);ctx.rotate(q.r*p);drawShape(q.s,0,0,q.z);ctx.restore()}}ctx.globalAlpha=1;if(p>=1.8)finish('cure')}
   if(ph==='bite'&&now-HS.biteAt>1300)finish('bitten');
   for(const q of HS.pops){const p=(now-q.at)/900;if(p>1)continue;ctx.globalAlpha=1-p;ctx.fillStyle=q.color;ctx.font=`22px ${DISP}`;ctx.textAlign='center';ctx.fillText(q.text,g.hx,Math.max(110,g.hy-Math.max(26,aimTol(g))*1.5-40)-p*30);ctx.globalAlpha=1}
   HS.pops=HS.pops.filter(q=>now-q.at<900)}
@@ -629,7 +729,7 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
 const FB_CONFIG=window.ZONEZ_FIREBASE||null;
 const FB_VER='10.12.2';
 const CLOUD={locked:false,userUnsub:null,on:false,user:null,db:null,auth:null,pushT:0,quota:{},cureUnsub:null,quotaUnsub:null,ready:false};
-const SYNC_KEYS=['tz','flash','flashAt','frames','sinceFrame','codes','seen','cured','hunts','topLog','tierLog','lastHuntDay','profile','infectedUntil','bites','cureId'];
+const SYNC_KEYS=['owned','equip','charm','shopLog','shopSpent','tz','flash','flashAt','frames','sinceFrame','codes','seen','cured','hunts','topLog','tierLog','lastHuntDay','profile','infectedUntil','bites','cureId'];
 /* Cài đặt chung do chủ tiệm chỉnh ở trang Quầy (config/game) */
 async function loadGameConfig(){try{const sn=await CLOUD.db.collection('config').doc('game').get();if(!sn.exists)return;const g=sn.data();
  for(const k of ['pQuick','pMid','cap','topDay'])if(typeof g[k]==='number')S.cfg[k]=g[k];if(typeof g.firstFast==='boolean')S.cfg.firstFast=g.firstFast;
