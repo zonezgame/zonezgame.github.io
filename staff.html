@@ -41,6 +41,11 @@ textarea{min-height:96px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid2 label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
 .ck{display:flex;align-items:center;gap:8px;font-size:15px}.ck input{width:auto}
 .msg{font-size:15px;margin:0;font-weight:700}
+.sub{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:8px 0;background:var(--bg);scrollbar-width:none}
+.sub::-webkit-scrollbar{display:none}
+.sub button{flex:0 0 auto;padding:9px 14px;font-size:14px;border-width:2px;border-radius:999px;background:#fff;white-space:nowrap}
+.sub button[aria-selected="true"]{background:var(--ink);color:#fff}
+#pAdmin [data-sub][hidden]{display:none!important}
 .tr{display:flex;flex-direction:column;gap:8px;border:2px solid var(--ink);border-radius:14px;padding:10px 12px;background:#fff}
 .tr .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.tr .top b{font-size:16px}
 .tr .bar{height:8px;border-radius:99px;background:#eee6b8;overflow:hidden}.tr .bar i{display:block;height:100%;background:var(--accent)}
@@ -95,14 +100,21 @@ textarea{min-height:96px}
  </section>
  </div>
 
- <div id="pAdmin" hidden style="display:flex;flex-direction:column;gap:16px">
- <section class="box">
+ <div id="pAdmin" hidden style="display:flex;flex-direction:column;gap:12px">
+ <nav class="sub" id="subTabs" role="tablist" aria-label="Quản lý">
+  <button type="button" role="tab" data-s="ov" aria-selected="true">Tổng quan</button>
+  <button type="button" role="tab" data-s="acc" aria-selected="false">Tài khoản</button>
+  <button type="button" role="tab" data-s="st" aria-selected="false">Trạm nạp</button>
+  <button type="button" role="tab" data-s="cfg" aria-selected="false">Cài đặt</button>
+  <button type="button" role="tab" data-s="staff" aria-selected="false">Nhân viên</button>
+ </nav>
+ <section class="box" data-sub="ov">
   <div class="row" style="align-items:center"><h2>Tổng quan</h2><button id="reload" type="button" style="flex:0 0 auto;padding:8px 14px">Tải lại</button></div>
   <div class="kpi k4" id="ov"></div>
   <p class="muted" id="ovNote"></p>
  </section>
 
- <section class="box">
+ <section class="box" data-sub="acc">
   <h2>Tài khoản</h2>
   <div class="row"><input id="accQ" class="num" placeholder="Tìm theo tên" autocomplete="off">
    <select id="accSort" style="flex:0 0 42%"><option value="act">Mới chơi</option><option value="new">Mới tạo</option><option value="tz">Nhiều TZ</option><option value="cure">Chữa nhiều</option></select></div>
@@ -111,7 +123,7 @@ textarea{min-height:96px}
   <div id="aCard"></div>
  </section>
 
- <section class="box">
+ <section class="box" data-sub="st">
   <h2>Trạm nạp flash</h2>
   <p class="muted">Dán QR ở cửa hàng đối tác. Khách quét là đầy flash. Mỗi khách nạp 1 lần mỗi ngày tại một trạm; hết lượt trong ngày thì trạm tạm khoá tới 0 giờ.</p>
   <div class="row"><input id="trName" class="num" placeholder="Tên trạm" maxlength="40" autocomplete="off">
@@ -123,7 +135,7 @@ textarea{min-height:96px}
   <div class="acc" id="trList"></div>
  </section>
 
- <section class="box">
+ <section class="box" data-sub="cfg">
   <h2>Cài đặt game</h2>
   <p class="muted">Áp dụng cho mọi khách từ lần mở game tiếp theo.</p>
   <div class="grid2">
@@ -138,7 +150,7 @@ textarea{min-height:96px}
   <button id="gSave" type="button">Lưu cài đặt</button><p class="msg" id="gMsg"></p>
  </section>
 
- <section class="box">
+ <section class="box" data-sub="staff">
   <h2>Nhân viên</h2>
   <label class="muted" for="stEmails">Email Google của nhân viên quầy (mỗi dòng một email)</label>
   <textarea id="stEmails" autocomplete="off"></textarea>
@@ -297,6 +309,14 @@ $('#trList').addEventListener('click',async e=>{const h=e.target.closest('[data-
  try{await db.collection('stations').doc(id).update({active:!st.d.active});st.d.active=!st.d.active;renderStations()}catch(err){$('#trMsg').textContent='Chưa lưu được.'}});
 $('#trList').addEventListener('change',async e=>{const sel=e.target.closest('[data-lv]');if(!sel)return;const id=sel.closest('[data-st]').dataset.st,st=STATIONS.find(x=>x.id===id),lv=sel.value;
  try{await db.collection('stations').doc(id).update({level:lv,cap:LV[lv].cap});st.d.level=lv;st.d.cap=LV[lv].cap;renderStations()}catch(err){$('#trMsg').textContent='Chưa lưu được.'}});
+
+/* Tab con trong Quản lý */
+let SUB='ov';try{SUB=localStorage.getItem('zz.sub')||'ov'}catch(e){}
+function showSub(k){SUB=k;try{localStorage.setItem('zz.sub',k)}catch(e){}
+ $('#subTabs').querySelectorAll('[data-s]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.s===k)));
+ $('#pAdmin').querySelectorAll('[data-sub]').forEach(x=>{x.hidden=x.dataset.sub!==k});const a=$('#subTabs [aria-selected="true"]');a&&a.scrollIntoView({inline:'center',block:'nearest'});window.scrollTo({top:0})}
+$('#subTabs').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(b)showSub(b.dataset.s)});
+showSub(SUB);
 $('#reload').addEventListener('click',loadAdmin);
 $('#gSave').addEventListener('click',async()=>{const n=(id,a,b)=>Math.min(b,Math.max(a,parseInt($(id).value,10)||0));let pQ=n('#gQuick',0,100),pM=n('#gMid',0,100);if(pQ+pM>100)pM=100-pQ;
  try{await db.collection('config').doc('game').set({pQuick:pQ,pMid:pM,cap:n('#gCap',26,120),topDay:n('#gTop',1,10),firstFast:$('#gFirst').checked,season:$('#gSeason').value,updatedAt:Date.now(),updatedBy:user.email});$('#gMsg').textContent='Đã lưu. Phần còn lại '+(100-pQ-pM)+'% là nhóm dò lâu.'}
