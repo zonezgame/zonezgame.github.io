@@ -7,7 +7,8 @@
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0;height:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}</style>
 </head><body>
-<title>ZONE Z</title>
+<title>Zombie TheZone</title>
+<link rel="preload" as="image" href="img/home.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Be+Vietnam+Pro:wght@400;500;700&family=Chakra+Petch:wght@500;700&display=swap">
@@ -179,6 +180,43 @@ h2,h3{margin:0;text-wrap:balance}
 .bubble small{display:block;font-family:var(--hud);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
 .flashfx{position:absolute;inset:0;background:var(--flash);opacity:0;pointer-events:none}
 .flashfx.go{animation:fl .38s ease-out}
+
+/* Sảnh (màn hình chính) */
+.screen.lobbyMode{padding:0;gap:0;background:#07090f}
+.lobby{display:flex;flex-direction:column;min-height:100%}
+.art{position:relative;aspect-ratio:941/1050;background:#07090f url(img/home.webp) top center/cover no-repeat}
+.art::after{content:"";position:absolute;inset:auto 0 0 0;height:34%;background:linear-gradient(to bottom,rgba(7,9,15,0),#07090f 92%)}
+.art .tr{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;display:flex;gap:10px;z-index:2}
+.ic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;background:rgba(10,12,20,.62);border:1.5px solid rgba(255,255,255,.28);backdrop-filter:blur(4px)}
+.ic svg{width:24px;height:24px}
+.deck{position:relative;z-index:1;margin-top:-26%;padding:0 max(14px,env(safe-area-inset-left,0px)) calc(env(safe-area-inset-bottom,0px) + 22px);display:flex;flex-direction:column;gap:14px}
+.me.lob{background:rgba(12,15,24,.82);backdrop-filter:blur(6px);border-color:rgba(255,255,255,.14);padding:8px 10px}
+.me.lob img{width:52px;height:52px}
+.me.lob>span:nth-child(2){flex:1;min-width:0}.me.lob>span:nth-child(2) b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me .res{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-family:var(--hud);font-weight:700;font-size:15px;color:#fff;white-space:nowrap}
+.me .res em{font-style:normal;font-size:10px;letter-spacing:.12em;color:var(--muted);margin-right:6px}
+.me .res .tz{color:var(--sodium)}
+.infbar{display:flex;flex-direction:column;gap:6px;background:rgba(90,10,18,.78);border:1.5px solid #ff4d4d;border-radius:12px;padding:10px 12px;font-size:13px;color:#ffd9d9}
+.infbar b{color:#fff}.row2{display:flex;gap:8px}.row2 .btn{flex:1;padding:10px 6px;font-size:13px}
+.startwrap{padding:6px;border-radius:14px;background:repeating-linear-gradient(-45deg,#111 0 12px,#ffd23f 12px 24px);box-shadow:0 10px 30px rgba(255,190,40,.25),0 0 0 2px #000}
+.start{width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 10px 14px;border-radius:9px;border:2px solid #1a1505;background:linear-gradient(180deg,#ffe066,#ffc928 60%,#e8a90f);color:#111;font-family:var(--display);font-size:44px;line-height:1;letter-spacing:.02em;text-shadow:0 2px 0 rgba(255,255,255,.35)}
+.start span{transform:skewX(-8deg);display:inline-block}
+.start:active{transform:translateY(2px)}
+@media (prefers-reduced-motion:no-preference){.startwrap{animation:pulseS 2.4s ease-in-out infinite}@keyframes pulseS{50%{box-shadow:0 10px 38px rgba(255,190,40,.5),0 0 0 2px #000}}}
+.hint{margin:-4px 0 0;text-align:center;font-size:13px;color:#c9cfdb}
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.t6{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 4px 12px;border-radius:10px;color:#fff;text-align:center;
+ background:linear-gradient(160deg,#1d2331,#0d1018);border:1.5px solid var(--c);box-shadow:0 0 14px -4px var(--c),inset 0 1px 0 rgba(255,255,255,.06);
+ clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.t6 b{font-family:var(--body);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;line-height:1.15}
+.t6 small{font-size:11px;color:var(--c);line-height:1.25}
+.t6 .dot{position:absolute;top:7px;right:9px;width:9px;height:9px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 2px #0d1018}
+.lobby .motto{text-align:center;margin:4px 0 0}
+/* Bộ sưu tập */
+.ccg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cc{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 4px 10px}
+.cc img{width:100%;aspect-ratio:1;border-radius:10px;background:var(--panel-2)}
+.cc b{font-size:13px}.cc small{font-size:11px;color:var(--muted)}.cc.ok{border-color:rgba(127,209,139,.55)}
 /* Shop */
 .shop{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .item{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 8px;color:var(--fg)}
@@ -217,7 +255,7 @@ h2,h3{margin:0;text-wrap:balance}
 <div class="app" id="app">
   <main class="screen" id="screen"></main>
   <nav class="tabs" role="tablist" aria-label="Vùng An Toàn">
-    <button role="tab" id="tab-home" data-tab="home" aria-selected="true">Vùng An Toàn</button>
+    <button role="tab" id="tab-home" data-tab="home" aria-selected="true">Sảnh</button>
     <button role="tab" id="tab-shop" data-tab="shop" aria-selected="false">Shop</button>
     <button role="tab" id="tab-bag" data-tab="bag" aria-selected="false">Kho đồ</button>
     <button role="tab" id="tab-stats" data-tab="stats" aria-selected="false">Chỉ số</button>
@@ -339,26 +377,58 @@ const screen=$('#screen');
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;render()}));
 function render(){regen();saveLocal();
  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
- screen.innerHTML=tab==='home'?homeHTML():tab==='bag'?bagHTML():tab==='shop'?shopHTML():statsHTML();screen.scrollTop=0;bind()}
+ screen.innerHTML=tab==='home'?homeHTML():tab==='bag'?bagHTML():tab==='shop'?shopHTML():tab==='chars'?charsHTML():statsHTML();screen.classList.toggle('lobbyMode',tab==='home');document.querySelector('.tabs').hidden=tab==='home';screen.scrollTop=0;bind()}
 
 function pipsHTML(){let s='';for(let i=0;i<FLASH_MAX;i++)s+=`<i class="${i<S.flash?'on':''}"></i>`;return s}
+const ICO={
+ cam:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/>',
+ people:'<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.4"/><path d="M3.5 19c.6-3.2 3-5 5.5-5s4.9 1.8 5.5 5M14 14.6c2.7-.5 5.6.9 6.4 4.4"/>',
+ cart:'<path d="M3 5h2.5l2.2 10h10.6L20.5 8H7"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/>',
+ box:'<path d="M4 8l8-4 8 4v9l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v9"/>',
+ bolt:'<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
+ chart:'<path d="M5 20V10M10 20V5M15 20v-7M20 20V8"/>',
+ event:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M12 13l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
+ sound:'<path d="M4 10h4l5-4v12l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+ mute:'<path d="M4 10h4l5-4v12l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.4-7 8-7s7 2.5 8 7"/>'};
+const svgI=k=>`<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.lastHuntDay!==dayKey();
- const rows=allZombies().map(z=>`<div class="row"><div class="nm ti"><img src="${face(z.id,S.cured[z.id]?'h':'z')}" alt="" width="48" height="48" style="${S.seen[z.id]?'':'filter:brightness(0);opacity:.45'}"><span><b>${esc(z.name)}</b><span class="tier t${z.tier}">${TIERS[z.tier].name}</span></span></div><div class="meta">${S.cured[z.id]?`chữa ${S.cured[z.id]}`:S.seen[z.id]?`gặp ${S.seen[z.id]}`:'chưa gặp'}</div></div>`).join('');
- const inf=infected(),pf=S.profile||{name:'Đạo hữu',avatar:'trasua'};
- return `<div class="top"><div><div class="wm">ZONE <span>Z</span></div><span class="by">THEZONE · bản test</span></div><button class="chip" id="mute" type="button">Âm thanh: ${S.mute?'tắt':'bật'}</button></div>
- <button class="me${inf?' inf':''}" id="meBtn" type="button"><img class="${avClass()}" src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>${inf?`Nhiễm độc · còn <span id="infT">${mmss(S.infectedUntil-Date.now())}</span>`:`Đã cứu ${Object.values(S.cured).reduce((a,b)=>a+b,0)} người · bấm để đổi nhân vật`}</small></span></button>
- ${inf?`<div class="infbox"><h3>Bạn đang nhiễm độc</h3><ul><li>Nhân vật của bạn hóa zombie.</li><li>TZ nhận được khi chữa zombie giảm một nửa.</li><li>Hết sau <b id="infT2">${mmss(S.infectedUntil-Date.now())}</b>, hoặc giải độc ngay tại quầy.</li></ul>
- <p class="note" style="margin:0">Ghé quầy THEZONE, đọc nickname <b>${esc(pf.name)}</b> cho nhân viên để giải độc ngay.</p><button class="btn" id="goShop" type="button">Mua thuốc giải độc ở Shop (300 TZ)</button>${CLOUD.user?'<button class="btn" id="askCure" type="button">Nhờ bạn chữa: gửi link qua Zalo, Messenger</button>':'<p class="note" style="margin:0">Khi bật tài khoản: gửi link nhờ bạn bè chụp flash để chữa.</p>'}</div>`:''}
- <p class="lede">Zombie tràn khắp phố. <b>THEZONE là Vùng An Toàn.</b> Không đánh, chỉ chụp: đèn flash giúp họ tỉnh lại. Zombie càng gần, flash càng mạnh, nhưng đừng để bị cắn.</p>
- <p class="note" style="margin:0">Bật camera và xoay điện thoại để tìm zombie quanh bạn. Chơi ở chỗ hơi tối sẽ ghê hơn.</p>
- <div class="season"><div class="moon" aria-hidden="true"></div><div class="eyebrow">Mùa đang mở · ${esc(se.dates)}</div><h3>${esc(se.name)}</h3><p>Boss mùa: ${esc(se.boss.name)} · 3 frame giới hạn</p></div>
- <div class="wallet"><div class="stat"><label>TZ đồng</label><b>${fmt(S.tz)}</b><small>Đổi topping ở Kho đồ</small></div>
- <div class="stat"><label>Flash ${S.flash}/${FLASH_MAX}</label><div class="pips">${pipsHTML()}</div><small>+1 mỗi 5 phút</small></div></div>
- <div class="sec"><button class="cta" id="go" type="button">DÒ ZOMBIE</button>
- <p class="note">${first?'Lần dò đầu tiên hôm nay sẽ gặp nhanh.':'Có lúc gặp ngay, có lúc phải dò lâu. Dò quá 45 giây chắc chắn gặp.'}</p>
- <button class="btn" id="scanSt" type="button" style="width:100%">⚡ Quét QR trạm nạp flash</button><p class="note" style="margin:0">Hết flash? Quét QR Trạm nạp ZONE Z ở các điểm đối tác, mua ở Shop, hoặc ghé quầy THEZONE.</p></div>
- <div class="sec"><h3>Sổ zombie</h3><div class="list">${rows}</div></div>
- <p class="motto">Làm trước · đo sau · sửa ngay</p>`}
+ const inf=infected(),pf=S.profile||{name:'Đạo hữu',avatar:'trasua'},saved=Object.values(S.cured).reduce((a,b)=>a+b,0);
+ const unused=(S.codes||[]).filter(c=>!c.used&&c.exp>Date.now()).length,seen=Object.keys(S.seen||{}).length,total=allZombies().length;
+ const tile=(id,ic,t,sub,c,dot)=>`<button class="t6" id="${id}" type="button" style="--c:${c}">${dot?'<i class="dot"></i>':''}${svgI(ic)}<b>${t}</b><small>${sub}</small></button>`;
+ return `<div class="lobby">
+ <div class="art" role="img" aria-label="Zombie TheZone: các zombie đang tràn về Vùng An Toàn">
+  <div class="tr"><button class="ic" id="mute" type="button" aria-label="${S.mute?'Bật':'Tắt'} âm thanh">${svgI(S.mute?'mute':'sound')}</button><button class="ic" id="meBtn2" type="button" aria-label="Tài khoản và nhân vật">${svgI('user')}</button></div>
+ </div>
+ <div class="deck">
+  <button class="me lob${inf?' inf':''}" id="meBtn" type="button"><img class="${avClass()}" src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>${inf?`Nhiễm độc · còn <span id="infT">${mmss(S.infectedUntil-Date.now())}</span>`:`Đã cứu ${saved} người`}</small></span>
+   <span class="res"><span class="tz"><em>TZ</em>${fmt(S.tz)}</span><span class="fl"><em>FLASH</em>${S.flash}/${FLASH_MAX}</span></span></button>
+  ${inf?`<div class="infbar"><b>Nhiễm độc: TZ nhận được giảm một nửa.</b><span>Giải độc ở quầy THEZONE (đọc nickname cho nhân viên), mua thuốc ở Shop, hoặc nhờ bạn chữa.</span>
+   <div class="row2"><button class="btn" id="goShop" type="button">Thuốc giải · 300 TZ</button>${CLOUD.user?'<button class="btn" id="askCure" type="button">Nhờ bạn chữa</button>':''}</div></div>`:''}
+  <div class="startwrap"><button class="start" id="go" type="button"><span>START</span><svg viewBox="0 0 24 24" width="38" height="38" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg></button></div>
+  <p class="hint">${first?'Lượt dò đầu tiên hôm nay gặp zombie rất nhanh.':S.flash<=0?'Hết flash: quét trạm nạp, mua ở Shop, hoặc ghé quầy THEZONE.':'Bật camera, xoay điện thoại tìm zombie. Chụp flash cho họ tỉnh lại.'}</p>
+  <div class="grid6">
+   ${tile('tChars','people','Nhân vật','Bộ sưu tập '+seen+'/'+total,'#ff5fb3',false)}
+   ${tile('tShop','cart','Cửa hàng','Vật phẩm','#62a9ff',false)}
+   ${tile('tBag','box','Kho đồ',unused?unused+' mã chưa dùng':'Topping · Frame','#cde86b',unused>0)}
+   ${tile('scanSt','bolt','Trạm nạp','Quét QR đầy flash','#ffd23f',S.flash<FLASH_MAX)}
+   ${tile('tStats','chart','Chỉ số','Thành tích','#7ad7ff',false)}
+   ${tile('tEvent','event','Sự kiện',esc(se.name)+' · '+esc(se.dates),'#ff8a2b',true)}
+  </div>
+  <p class="motto">THEZONE là Vùng An Toàn · Làm trước · đo sau · sửa ngay</p>
+ </div></div>`}
+function charsHTML(){const pf=S.profile||{name:'Đạo hữu',avatar:'trasua'};
+ const cards=allZombies().map(z=>{const cu=S.cured[z.id],sn=S.seen[z.id];return `<div class="cc${cu?' ok':''}"><img src="${face(z.id,cu?'h':'z')}" alt="" style="${sn?'':'filter:brightness(0) invert(.22);opacity:.55'}"><b>${sn?esc(z.name.replace('Zombie ','')):'???'}</b><span class="tier t${z.tier}">${TIERS[z.tier].name}</span><small>${cu?`đã chữa ${cu}`:sn?`gặp ${sn} lần`:'chưa gặp'}</small></div>`}).join('');
+ return `<h2 class="wm" style="font-size:26px">Nhân vật</h2>
+ <button class="me" id="meBtn" type="button"><img class="${avClass()}" src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>Nhân vật của bạn · bấm để đổi</small></span></button>
+ <div class="sec"><h3>Bộ sưu tập zombie · ${Object.keys(S.cured).length}/${allZombies().length} đã chữa</h3><p class="note">Gặp rồi mới lộ mặt. Chữa xong thì hiện hình người.</p><div class="ccg">${cards}</div></div>`}
+function eventSheet(){const se=SEASONS[S.season],sh=$('#sheet'),b=se.boss;
+ const frs=se.frames.map(f=>`<li>${esc(f.name)}${S.frames[f.id]?' · <b>đã có</b>':''}</li>`).join('');
+ sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Sự kiện"><div class="eyebrow" style="color:var(--sodium)">Sự kiện đang mở · ${esc(se.dates)}</div><h3 style="font-family:var(--display);font-weight:400;font-size:24px;margin:0">${esc(se.name)}</h3>
+ ${b&&HEAD[b.id]?`<img src="${face(b.id,S.cured[b.id]?'h':'z')}" alt="" width="120" height="120" style="border-radius:20px;align-self:center">`:''}
+ <p class="note" style="margin:0">Boss mùa: <b>${esc(b.name)}</b>. Chữa được boss có tỉ lệ rơi frame cao.</p><p class="note" style="margin:0">Frame giới hạn của mùa (chụp tại M BOOTH):</p><ul class="note" style="margin:0;padding-left:18px">${frs}</ul>
+ <button class="btn pri" id="evGo" type="button" style="width:100%">Đi săn boss</button><button class="btn" id="evX" type="button" style="width:100%">Đóng</button></div>`;sh.hidden=false;
+ $('#evX').addEventListener('click',()=>{sh.hidden=true});$('#evGo').addEventListener('click',()=>{sh.hidden=true;startHunt()})}
 
 function frameTile(f,season){const own=S.frames[f.id];const cur=f.excl||season===S.season;
  return own?`<button class="fr" type="button" data-frame="${f.id}" style="--a:${f.a};--b:${f.b}"><div class="pic"><span class="lb">${esc(f.name)}</span></div><div class="cap">${esc(f.name)}<small>${f.excl?'Độc quyền':esc(SEASONS[season].name)}</small></div></button>`
@@ -409,7 +479,8 @@ function simHTML(r){const c=S.cfg,target=[c.pQuick,c.pMid,Math.max(0,100-c.pQuic
 
 function bind(){const on=(id,ev,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener(ev,fn)};
  on('go','click',startHunt);
- on('meBtn','click',()=>profileSheet(false));
+ on('meBtn','click',()=>profileSheet(false));on('meBtn2','click',()=>profileSheet(false));
+ const go=t=>()=>{tab=t;render()};on('tChars','click',go('chars'));on('tShop','click',go('shop'));on('tBag','click',go('bag'));on('tStats','click',go('stats'));on('tEvent','click',eventSheet);
  on('askCure','click',askFriendCure);
  on('mute','click',()=>{S.mute=!S.mute;render()});
  screen.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buy(b)));
