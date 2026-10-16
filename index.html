@@ -430,16 +430,23 @@ function qr(cv,seed){const n=25,ctx=cv.getContext('2d');cv.width=n*8;cv.height=n
  for(let y=1;y<n-1;y++)for(let x=1;x<n-1;x++){const inF=(x<9&&y<9)||(x>n-10&&y<9)||(x<9&&y>n-10);if(!inF&&r()<.48)ctx.fillRect(x*8,y*8,8,8)}
  fin(1,1);fin(n-8,1);fin(1,n-8)}
 function profileSheet(first){const sh=$('#sheet');let pick=(S.profile&&S.profile.avatar)||'trasua';
+ const nick=userNick(),cloud=!!FB_CONFIG;
  const grid=()=>AVATARS.map(id=>`<button type="button" data-av="${id}" aria-pressed="${id===pick}"><img src="${SPRITES[id].h}" alt=""></button>`).join('');
  sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Nhân vật của bạn"><h3 style="font-family:var(--display);font-weight:400;font-size:20px">${first?'Chọn nhân vật của bạn':'Đổi nhân vật'}</h3>
  <p class="note" style="margin:0">Bị zombie cắn, nhân vật này sẽ hóa zombie.</p><div class="avgrid" id="avg">${grid()}</div>
- <label for="pfName" class="note" style="align-self:flex-start;margin:0">Tên hiển thị</label><input class="field" id="pfName" maxlength="18" value="${esc((S.profile&&S.profile.name)||'')}" placeholder="Ví dụ: Tín Đạo Sĩ">
- ${first?accountHTML(true):''}<button class="btn pri" id="pfSave" type="button" style="width:100%">${first?'Vào game':'Lưu'}</button>${first?'':accountHTML(false)}</div>`;
+ <label for="pfName" class="note" style="align-self:flex-start;margin:0">Nickname</label><input class="field" id="pfName" maxlength="18" autocomplete="off" value="${esc((S.profile&&S.profile.name)||'')}" placeholder="Ví dụ: TinDaoSi"${nick?' disabled':''}>
+ ${cloud&&!nick?`<input class="field" id="acPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="PIN 4 số (tự đặt)"><p class="note" style="margin:0">${first?'Có PIN là có tài khoản, tự lưu. Đổi máy chỉ cần nhập lại nickname và PIN. Bỏ trống PIN để chơi thử.':'Đặt PIN 4 số để lưu tài khoản bằng nickname này.'}</p>`:''}
+ <button class="btn pri" id="pfSave" type="button" style="width:100%">${first?'Vào game':'Lưu'}</button>
+ ${nick?`<p class="note" style="margin:0">Tài khoản <b>${esc((S.profile&&S.profile.name)||nick)}</b> · tự lưu. Quên PIN thì tạo nickname mới.</p><button class="btn" id="acOut" type="button" style="width:100%">Đăng xuất</button>`:''}
+ ${cloud?'':'<p class="note" style="margin:0">Tài khoản chưa bật: dữ liệu đang lưu trên máy này.</p>'}</div>`;
  sh.hidden=false;
  $('#avg').addEventListener('click',e=>{const b=e.target.closest('[data-av]');if(!b)return;pick=b.dataset.av;$('#avg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.av===pick)))});
- bindAccount();
- $('#pfSave').addEventListener('click',async()=>{const nm=$('#pfName').value.trim()||'Đạo hữu';S.profile={name:nm.slice(0,18),avatar:pick};save();
-  const ph=$('#acPhone'),pin=$('#acPin');if(first&&ph&&(ph.value.trim()||pin.value.trim())){const b=$('#pfSave');b.disabled=true;b.textContent='Đang vào…';const ok=await phoneLogin(ph.value,pin.value);b.disabled=false;b.textContent='Vào game';if(!ok)return}
+ const out=$('#acOut');if(out)out.addEventListener('click',()=>{sh.hidden=true;logout()});
+ $('#pfSave').addEventListener('click',async()=>{const raw=$('#pfName').value.trim().slice(0,18),pinEl=$('#acPin'),pin=pinEl?pinEl.value.trim():'';
+  if(pin){const b=$('#pfSave'),lbl=b.textContent;b.disabled=true;b.textContent='Đang vào…';const r=await nickLogin(raw,pin);b.disabled=false;b.textContent=lbl;if(!r)return;
+   if(r==='new'){S.profile={name:raw,avatar:pick};save()}}
+  else if(nick){S.profile={...S.profile,avatar:pick};save()}
+  else{S.profile={name:raw||'Đạo hữu',avatar:pick};save()}
   sh.hidden=true;render()})}
 function codeSheet(c){const sh=$('#sheet');
  sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="${esc(c.item)}">${c.slug&&ICON[c.slug]?`<img src="${ICON[c.slug]}" alt="" width="96" height="96">`:''}<h3 style="font-family:var(--display);font-weight:400;font-size:20px">${esc(c.item)}</h3><canvas id="qr" width="200" height="200"></canvas><div class="code">${c.code}</div>
@@ -646,7 +653,7 @@ async function cloudInit(){if(!FB_CONFIG)return;
   firebase.initializeApp(FB_CONFIG);CLOUD.auth=firebase.auth();CLOUD.db=firebase.firestore();CLOUD.on=true;
   CLOUD.auth.onAuthStateChanged(async u=>{
    if(!u){CLOUD.user=null;try{await CLOUD.auth.signInAnonymously()}catch(e){}return}
-   CLOUD.user=u;try{await pullState()}catch(e){}
+   CLOUD.user=u;CLOUD.pulling=true;try{await pullState()}catch(e){}CLOUD.pulling=false;pushNow();
    CLOUD.ready=true;listenCure();listenQuota();handleCureLink();render()})}
  catch(e){CLOUD.on=false}}
 async function pullState(){const uid=CLOUD.user.uid,ref=CLOUD.db.collection('users').doc(uid);const snap=await ref.get();
@@ -655,51 +662,44 @@ async function pullState(){const uid=CLOUD.user.uid,ref=CLOUD.db.collection('use
   if(S.uid!==uid||(d.updatedAt||0)>(S.updatedAt||0)){for(const k of SYNC_KEYS)if(k in d)S[k]=d[k];S.updatedAt=d.updatedAt||Date.now()}}
  S.uid=uid;saveLocal();pushNow()}
 function pushSoon(){if(!CLOUD.user)return;clearTimeout(CLOUD.pushT);CLOUD.pushT=setTimeout(pushNow,1500)}
-function pushNow(){if(!CLOUD.user)return;const o={};for(const k of SYNC_KEYS)if(S[k]!==undefined)o[k]=S[k];
- o.updatedAt=S.updatedAt||Date.now();o.name=(S.profile&&S.profile.name)||'';o.guest=!!CLOUD.user.isAnonymous;o.phone=userPhone();
+function pushNow(){if(!CLOUD.user||CLOUD.pulling)return;const o={};for(const k of SYNC_KEYS)if(S[k]!==undefined)o[k]=S[k];
+ o.updatedAt=S.updatedAt||Date.now();o.name=(S.profile&&S.profile.name)||'';o.guest=!!CLOUD.user.isAnonymous;o.nick=userNick();
  CLOUD.db.collection('users').doc(CLOUD.user.uid).set(JSON.parse(JSON.stringify(o))).catch(()=>{})}
 onSave=pushSoon;
-/* Đăng nhập nhanh bằng số điện thoại + PIN 4 số (Firebase Email/Password, email dựng từ số điện thoại) */
-const PHONE_DOMAIN='khach.zonez.app';
+/* Tài khoản = nickname + PIN 4 số (Firebase Email/Password, email dựng từ nickname bỏ dấu) */
+const NICK_DOMAIN='nick.zonez.app';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function normPhone(v){let s=String(v||'').replace(/\D/g,'');if(s.startsWith('84')&&s.length===11)s='0'+s.slice(2);return /^0\d{9}$/.test(s)?s:null}
-const maskPhone=p=>p?p.slice(0,4)+' *** '+p.slice(-3):'';
-const userPhone=()=>{const e=CLOUD.user&&CLOUD.user.email||'';return e.endsWith('@'+PHONE_DOMAIN)?e.split('@')[0]:''};
-async function phoneLogin(phoneRaw,pinRaw){
- const phone=normPhone(phoneRaw),pin=String(pinRaw||'').trim();
- if(!phone){toast('Số điện thoại chưa đúng (10 số, bắt đầu bằng 0).');return false}
- if(!/^\d{4}$/.test(pin)){toast('Mã PIN gồm đúng 4 số.');return false}
+function nickKey(v){return String(v||'').replace(/[đĐ]/g,'d').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+const userNick=()=>{const e=CLOUD.user&&CLOUD.user.email||'';return e.endsWith('@'+NICK_DOMAIN)?e.split('@')[0]:''};
+/* Trả về 'new' (tạo mới), 'old' (vào tài khoản cũ) hoặc false */
+async function nickLogin(raw,pinRaw){
+ const key=nickKey(raw),pin=String(pinRaw||'').trim();
+ if(key.length<3){toast('Nickname cần ít nhất 3 chữ hoặc số.');return false}
+ if(key.length>20){toast('Nickname dài quá, tối đa 20 ký tự.');return false}
+ if(!/^\d{4}$/.test(pin)){toast('PIN gồm đúng 4 số.');return false}
  for(let i=0;i<40&&!CLOUD.on;i++)await sleep(200);
  if(!CLOUD.on){toast('Chưa kết nối được máy chủ, thử lại sau.');return false}
- const email=phone+'@'+PHONE_DOMAIN,pass='zonez-'+pin,u=CLOUD.auth.currentUser;
+ const email=key+'@'+NICK_DOMAIN,pass='zonez-'+pin,u=CLOUD.auth.currentUser;
  try{
-  if(u&&u.isAnonymous){await u.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email,pass));CLOUD.user=CLOUD.auth.currentUser;S.uid=CLOUD.user.uid;pushNow()}
+  if(u&&u.isAnonymous){await u.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email,pass));CLOUD.user=CLOUD.auth.currentUser;S.uid=CLOUD.user.uid}
   else await CLOUD.auth.createUserWithEmailAndPassword(email,pass);
-  toast('Đã lưu tài khoản '+maskPhone(phone)+'. Nhớ mã PIN nhé.');render();return true}
+  toast('Đã tạo tài khoản. Nhớ nickname và PIN nhé.');return 'new'}
  catch(e){
   if(['auth/email-already-in-use','auth/credential-already-in-use','auth/provider-already-linked'].includes(e.code)){
-   try{await CLOUD.auth.signInWithEmailAndPassword(email,pass);toast('Chào mừng trở lại!');return true}
-   catch(e2){toast(e2.code==='auth/too-many-requests'?'Sai nhiều lần, thử lại sau ít phút.':'Sai mã PIN của số này.');return false}}
+   clearTimeout(CLOUD.pushT);
+   try{await CLOUD.auth.signInWithEmailAndPassword(email,pass);toast('Chào mừng trở lại!');return 'old'}
+   catch(e2){toast(e2.code==='auth/too-many-requests'?'Sai nhiều lần, thử lại sau ít phút.':'Nickname này đã có người dùng, hoặc sai PIN. Quên PIN thì chọn nickname khác.');return false}}
   if(e.code==='auth/operation-not-allowed'){toast('Chủ tiệm chưa bật kiểu đăng nhập Email/Password trong Firebase.');return false}
   if(e.code==='auth/network-request-failed'){toast('Mất mạng, thử lại.');return false}
-  toast('Chưa đăng nhập được ('+(e.code||'lỗi')+').');return false}}
-async function logout(){if(!CLOUD.on)return;await CLOUD.auth.signOut();for(const k of SYNC_KEYS)delete S[k];Object.assign(S,JSON.parse(JSON.stringify(DEF)),{cfg:S.cfg});S.uid=null;saveLocal();render();profileSheet(true)}
-const acFields='<input class="field" id="acPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="Số điện thoại"><input class="field" id="acPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Mã PIN 4 số (tự đặt)">';
-function accountHTML(first){if(!FB_CONFIG)return '<p class="note" style="margin:0">Tài khoản chưa bật: dữ liệu đang lưu trên máy này.</p>';
- const ph=userPhone();
- if(ph)return `<p class="note" style="margin:0">Tài khoản: <b>${maskPhone(ph)}</b> · tự lưu</p><button class="btn" id="acOut" type="button" style="width:100%">Đăng xuất</button>`;
- if(first)return `<p class="note" style="margin:0">Nhập số điện thoại và tự đặt PIN 4 số để giữ TZ, frame, mã quà. Đã có tài khoản thì nhập lại đúng số và PIN. Bỏ trống để chơi thử.</p>${acFields}`;
- return `<p class="note" style="margin:0">Bạn đang chơi khách. Lưu bằng số điện thoại để không mất dữ liệu khi đổi máy.</p>${acFields}<button class="btn" id="acGo" type="button" style="width:100%">Lưu / Đăng nhập</button>`}
-function bindAccount(){const g=$('#acGo'),o=$('#acOut');
- if(g)g.addEventListener('click',async()=>{g.disabled=true;const ok=await phoneLogin($('#acPhone').value,$('#acPin').value);g.disabled=false;if(ok)$('#sheet').hidden=true});
- if(o)o.addEventListener('click',()=>{$('#sheet').hidden=true;logout()})}
+  toast('Chưa vào được ('+(e.code||'lỗi')+').');return false}}
+async function logout(){if(!CLOUD.on)return;clearTimeout(CLOUD.pushT);await CLOUD.auth.signOut();for(const k of SYNC_KEYS)delete S[k];Object.assign(S,JSON.parse(JSON.stringify(DEF)),{cfg:S.cfg});S.uid=null;saveLocal();render();profileSheet(true)}
 
 /* Suất chung cả tiệm mỗi ngày */
 function listenQuota(){if(!CLOUD.user||CLOUD.quotaUnsub)return;CLOUD.quotaUnsub=CLOUD.db.collection('quota').doc(dayKey()).onSnapshot(s=>{CLOUD.quota=s.data()||{};if(tab==='bag'&&$('#hunt').hidden)render()},()=>{})}
 function usedToday(k){if(CLOUD.user)return CLOUD.quota['k'+k]||0;const tl=(S.tierLog&&S.tierLog[dayKey()])||{};return tl[k]||0}
 async function takeQuota(k){if(!CLOUD.user)return true;const ref=CLOUD.db.collection('quota').doc(dayKey());
  try{return await CLOUD.db.runTransaction(async tx=>{const s=await tx.get(ref);const cur=(s.exists&&s.data()['k'+k])||0;if(cur>=QUOTA[k])return false;tx.set(ref,{['k'+k]:cur+1},{merge:true});return true})}catch(e){return false}}
-function saveCode(c,t){if(!CLOUD.user)return;CLOUD.db.collection('codes').doc(c.code).set({uid:CLOUD.user.uid,name:(S.profile&&S.profile.name)||'',phone:maskPhone(userPhone()),item:c.item,kind:c.kind,k:t?t.k:0,minOrder:t?MINORDER[t.k]*1000:0,exp:c.exp,used:false,createdAt:Date.now()}).catch(()=>{})}
+function saveCode(c,t){if(!CLOUD.user)return;CLOUD.db.collection('codes').doc(c.code).set({uid:CLOUD.user.uid,name:(S.profile&&S.profile.name)||'',item:c.item,kind:c.kind,k:t?t.k:0,minOrder:t?MINORDER[t.k]*1000:0,exp:c.exp,used:false,createdAt:Date.now()}).catch(()=>{})}
 
 /* Nhờ bạn chữa khi nhiễm độc */
 async function askFriendCure(){if(!CLOUD.user){toast('Cần bật tài khoản để gửi link.');return}const pf=S.profile||{name:'Bạn',avatar:'trasua'};
