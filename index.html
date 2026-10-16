@@ -462,7 +462,7 @@ function buildBg(){const c=document.createElement('canvas');c.width=W*DPR;c.heig
 
 /* ---------- Nhân vật: hình vẽ zombie / đã tỉnh ---------- */
 /* Hình nhân vật do THEZONE thiết kế (img/nv): trước và sau khi chữa. HEAD: tâm đầu [x,y] theo tỉ lệ khung 512 */
-var HEAD={"ngugat":[0.475,0.222],"deadline":[0.504,0.219],"trasua":[0.506,0.223],"songao":[0.464,0.231],"shipper":[0.462,0.224],"onthi":[0.501,0.227],"doidem":[0.473,0.223],"bingo":[0.432,0.235],"ceo":[0.52,0.21]};
+var HEAD={"ngugat":[0.483,0.215],"deadline":[0.524,0.212],"trasua":[0.522,0.219],"songao":[0.478,0.218],"shipper":[0.458,0.215],"onthi":[0.52,0.222],"doidem":[0.502,0.214],"bingo":[0.481,0.221],"ceo":[0.485,0.212]};
 for(const id of Object.keys(HEAD))SPRITES[id]={z:`img/nv/${id}-z.webp`,h:`img/nv/${id}-h.webp`};
 const SPR={};for(const [id,v] of Object.entries(SPRITES)){const a=new Image(),b=new Image();a.src=v.z;b.src=v.h;SPR[id]={z:a,h:b}}
 /* Thời gian (giây) để zombie đi từ xa tới sát mặt, và hệ số khó theo bậc */
