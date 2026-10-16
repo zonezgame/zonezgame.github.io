@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ZONE Z · Quầy</title>
+<meta name="theme-color" content="#14401f">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Paytone+One&family=Maven+Pro:wght@500;700&display=swap">
+<script src="firebase-config.js"></script>
+<style>
+/* Trang quầy THEZONE: một cột, nút lớn cho nhân viên thao tác nhanh */
+:root{--bg:#fbf1b7;--ink:#14401f;--accent:#d4372a;--panel:#ffffff;--muted:#456a4d;--ok:#1f7a3a;--lime:#cde86b;
+ --display:"Paytone One","Arial Black",sans-serif;--body:"Maven Pro",system-ui,sans-serif}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-weight:500;font-size:17px;line-height:1.45}
+.wrap{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 18px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 40px) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.band{height:16px;background:repeating-linear-gradient(90deg,var(--accent) 0 16px,var(--bg) 16px 32px);border-radius:4px}
+h1{margin:0;font-family:var(--display);font-weight:400;font-size:34px;line-height:1}h1 span{color:var(--accent)}
+h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px}
+.box{background:var(--panel);border:3px solid var(--ink);border-radius:22px;padding:16px;box-shadow:6px 6px 0 var(--ink);display:flex;flex-direction:column;gap:12px}
+button{font:inherit;font-weight:700;cursor:pointer;border:3px solid var(--ink);border-radius:16px;padding:14px;background:var(--lime);color:var(--ink)}
+button.red{background:var(--accent);color:#fff}button:disabled{opacity:.45;cursor:default}
+input{font:inherit;font-size:20px;padding:12px;border:3px solid var(--ink);border-radius:14px;width:100%;background:#fff;color:var(--ink);text-transform:uppercase;letter-spacing:.06em}
+input.num{text-transform:none;letter-spacing:0}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+video{width:100%;border-radius:16px;background:#000;aspect-ratio:3/4;object-fit:cover}
+.muted{color:var(--muted);font-size:15px;margin:0}
+.state{font-family:var(--display);font-size:24px}.state.ok{color:var(--ok)}.state.bad{color:var(--accent)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0}dt{color:var(--muted)}dd{margin:0;font-weight:700}
+.list{display:flex;flex-direction:column;gap:6px;font-size:15px}.list div{display:flex;justify-content:space-between;gap:10px;border-top:1px dashed #c9c08a;padding-top:6px}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.kpi b{display:block;font-family:var(--display);font-size:26px;font-weight:400}.kpi span{font-size:13px;color:var(--muted)}
+</style></head><body>
+<div class="wrap">
+ <div class="band" aria-hidden="true"></div>
+ <h1>ZONE Z <span>· QUẦY</span></h1>
+ <p class="muted">Quét mã đổi quà của khách, kiểm tra hạn và đơn tối thiểu, rồi xác nhận đã dùng.</p>
+
+ <section class="box" id="login">
+  <h2>Đăng nhập nhân viên</h2>
+  <p class="muted" id="loginMsg">Dùng tài khoản Google đã được chủ tiệm thêm vào danh sách nhân viên.</p>
+  <button id="gIn" type="button">Đăng nhập bằng Google</button>
+ </section>
+
+ <section class="box" id="scan" hidden>
+  <h2>Quét mã</h2>
+  <video id="cam" playsinline muted></video>
+  <div class="row"><button id="camBtn" type="button">Bật camera quét</button></div>
+  <label for="codeIn" class="muted">Hoặc gõ mã</label>
+  <div class="row"><input id="codeIn" placeholder="TZ-XXXX-XXXX" maxlength="12" autocomplete="off"><button id="checkBtn" type="button" style="flex:0 0 auto">Kiểm tra</button></div>
+ </section>
+
+ <section class="box" id="result" hidden>
+  <div class="state" id="rState"></div>
+  <dl id="rInfo"></dl>
+  <label for="orderIn" class="muted" id="orderLbl">Giá trị đơn khách trả (nghìn đồng)</label>
+  <input id="orderIn" class="num" inputmode="numeric" pattern="[0-9]*" placeholder="Ví dụ 35">
+  <button class="red" id="useBtn" type="button" disabled>Xác nhận đã dùng</button>
+ </section>
+
+ <section class="box" id="today" hidden>
+  <h2>Hôm nay</h2>
+  <div class="kpi"><div><b id="kTop">0</b><span>topping đã đổi</span></div><div><b id="kFrame">0</b><span>frame đã dùng</span></div><div><b id="kSum">0</b><span>nghìn đ đơn kèm</span></div></div>
+  <div class="list" id="todayList"></div>
+ </section>
+ <p class="muted" id="who"></p>
+</div>
+<script>
+(()=>{"use strict";
+const $=s=>document.querySelector(s);const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const V='10.12.2',CFG=window.ZONEZ_FIREBASE;
+function load(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
+let auth,db,user,cur=null,stream=null,scanning=false;
+async function init(){if(!CFG){$('#loginMsg').textContent='Chưa có cấu hình Firebase. Chủ tiệm dán cấu hình vào file firebase-config.js.';$('#gIn').disabled=true;return}
+ const b=`https://www.gstatic.com/firebasejs/${V}/`;await load(b+'firebase-app-compat.js');await Promise.all([load(b+'firebase-auth-compat.js'),load(b+'firebase-firestore-compat.js')]);
+ firebase.initializeApp(CFG);auth=firebase.auth();db=firebase.firestore();
+ auth.getRedirectResult().catch(()=>{});
+ auth.onAuthStateChanged(async u=>{user=u;if(!u||u.isAnonymous){$('#login').hidden=false;$('#scan').hidden=$('#today').hidden=true;return}
+  let ok=false;try{const s=await db.collection('config').doc('staff').get();ok=s.exists&&(s.data().emails||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())}catch(e){}
+  $('#who').textContent=`Đang dùng: ${u.email}`;
+  if(!ok){$('#loginMsg').textContent=`Tài khoản ${u.email} chưa có quyền nhân viên. Chủ tiệm thêm email này vào danh sách nhân viên trong Firestore (config/staff, mục emails).`;$('#login').hidden=false;return}
+  $('#login').hidden=true;$('#scan').hidden=false;$('#today').hidden=false;loadToday()})}
+$('#gIn').addEventListener('click',async()=>{const p=new firebase.auth.GoogleAuthProvider();try{await auth.signInWithPopup(p)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')auth.signInWithRedirect(p);else $('#loginMsg').textContent='Chưa đăng nhập được: '+(e.code||'lỗi')}});
+
+/* Quét QR bằng camera */
+let jsQR=null;
+$('#camBtn').addEventListener('click',async()=>{if(stream){stopCam();return}
+ try{if(!jsQR){await load('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');jsQR=window.jsQR}
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});const v=$('#cam');v.srcObject=stream;await v.play();$('#camBtn').textContent='Tắt camera';scanning=true;tick()}
+ catch(e){$('#camBtn').textContent='Không mở được camera, gõ mã bên dưới'}});
+function stopCam(){scanning=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('#cam').srcObject=null;$('#camBtn').textContent='Bật camera quét'}
+const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+function tick(){if(!scanning)return;const v=$('#cam');if(v.videoWidth){const w=Math.min(640,v.videoWidth),h=Math.round(w*v.videoHeight/v.videoWidth);cv.width=w;cv.height=h;cx.drawImage(v,0,0,w,h);
+  const r=jsQR(cx.getImageData(0,0,w,h).data,w,h);if(r&&/^TZ-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(r.data.trim())){navigator.vibrate&&navigator.vibrate(60);stopCam();$('#codeIn').value=r.data.trim();check();return}}
+ requestAnimationFrame(tick)}
+
+/* Kiểm tra và xác nhận mã */
+$('#checkBtn').addEventListener('click',check);$('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')check()});
+async function check(){const code=$('#codeIn').value.trim().toUpperCase();if(!code)return;cur=null;$('#result').hidden=false;$('#rState').textContent='Đang kiểm tra…';$('#rState').className='state';$('#rInfo').innerHTML='';$('#useBtn').disabled=true;
+ let d=null;try{const s=await db.collection('codes').doc(code).get();d=s.exists?s.data():null}catch(e){}
+ if(!d){$('#rState').textContent='Không tìm thấy mã';$('#rState').className='state bad';return}
+ const now=Date.now(),exp=d.exp<now,minK=Math.round((d.minOrder||0)/1000);
+ $('#rInfo').innerHTML=`<dt>Quà</dt><dd>${esc(d.item)}</dd><dt>Khách</dt><dd>${esc(d.name||'Không tên')}</dd><dt>Hạn</dt><dd>${new Date(d.exp).toLocaleDateString('vi-VN')}</dd>`+(d.kind==='topping'?`<dt>Đơn tối thiểu</dt><dd>${minK}.000đ</dd>`:'')+(d.used?`<dt>Đã dùng</dt><dd>${new Date(d.usedAt).toLocaleString('vi-VN')}</dd>`:'');
+ if(d.used){$('#rState').textContent='ĐÃ DÙNG RỒI';$('#rState').className='state bad';return}
+ if(exp){$('#rState').textContent='HẾT HẠN';$('#rState').className='state bad';return}
+ $('#rState').textContent='HỢP LỆ';$('#rState').className='state ok';cur={code,d,minK};
+ const isTop=d.kind==='topping';$('#orderIn').hidden=$('#orderLbl').hidden=!isTop;$('#orderIn').value='';$('#useBtn').disabled=isTop;
+ $('#useBtn').textContent=isTop?`Xác nhận (đơn từ ${minK}K)`:'Xác nhận đã dùng frame'}
+$('#orderIn').addEventListener('input',()=>{if(!cur)return;const v=parseInt($('#orderIn').value,10)||0;$('#useBtn').disabled=v<cur.minK});
+$('#useBtn').addEventListener('click',async()=>{if(!cur)return;$('#useBtn').disabled=true;const order=parseInt($('#orderIn').value,10)||0;
+ try{await db.collection('codes').doc(cur.code).update({used:true,usedAt:Date.now(),usedBy:user.email,orderK:order});
+  $('#rState').textContent='ĐÃ XÁC NHẬN';navigator.vibrate&&navigator.vibrate([40,40,40]);cur=null;$('#codeIn').value='';loadToday()}
+ catch(e){$('#rState').textContent='Chưa lưu được, thử lại';$('#rState').className='state bad';$('#useBtn').disabled=false}});
+
+async function loadToday(){const start=new Date();start.setHours(0,0,0,0);
+ try{const q=await db.collection('codes').where('usedAt','>=',start.getTime()).orderBy('usedAt','desc').limit(100).get();
+  let top=0,fr=0,sum=0;const rows=[];q.forEach(doc=>{const d=doc.data();if(d.kind==='topping'){top++;sum+=d.orderK||0}else fr++;rows.push(`<div><span>${new Date(d.usedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})} · ${esc(d.item)}</span><span>${esc(d.name||'')}</span></div>`)});
+  $('#kTop').textContent=top;$('#kFrame').textContent=fr;$('#kSum').textContent=sum;$('#todayList').innerHTML=rows.join('')||'<p class="muted">Chưa có mã nào hôm nay.</p>'}
+ catch(e){$('#todayList').innerHTML='<p class="muted">Chưa tải được danh sách hôm nay.</p>'}}
+init();
+})();
+</script>
+</body></html>

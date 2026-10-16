@@ -1,0 +1,58 @@
+rules_version = '2';
+// Luật bảo vệ Firestore cho ZONE Z. Dán toàn bộ file này vào Firestore → Rules → Publish.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isStaff() {
+      return signedIn() && request.auth.token.email != null
+        && request.auth.token.email.lower() in get(/databases/$(db)/documents/config/staff).data.emails;
+    }
+
+    // Dữ liệu người chơi: chỉ chính người đó đọc và ghi.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Mã đổi quà: người chơi tạo mã của mình; nhân viên đọc và đánh dấu đã dùng một lần.
+    match /codes/{code} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.used == false;
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      allow update: if isStaff() && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedAt', 'usedBy', 'orderK']);
+      allow list: if isStaff();
+    }
+
+    // Suất chung cả tiệm mỗi ngày: mỗi lần chỉ tăng 1, không vượt trần.
+    function okField(f, cap) {
+      return !(f in request.resource.data)
+        || (request.resource.data[f] is int
+            && request.resource.data[f] <= cap
+            && request.resource.data[f] <= (resource == null || !(f in resource.data) ? 0 : resource.data[f]) + 1);
+    }
+    match /quota/{day} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly(['k5', 'k6', 'k8', 'k10', 'k15', 'k20'])
+        && okField('k5', 7) && okField('k6', 5) && okField('k8', 3)
+        && okField('k10', 2) && okField('k15', 1) && okField('k20', 2);
+    }
+
+    // Link nhờ bạn chữa: chủ link tạo; người khác bấm chữa một lần.
+    match /cures/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.done == false;
+      allow read: if signedIn();
+      allow update: if signedIn() && resource.data.done == false
+        && request.auth.uid != resource.data.uid
+        && request.resource.data.done == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done', 'by', 'byName', 'doneAt']);
+    }
+
+    // Danh sách email nhân viên: chủ tiệm sửa trong console.
+    match /config/{doc} {
+      allow read: if signedIn();
+    }
+  }
+}
