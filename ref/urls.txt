@@ -16,3 +16,5 @@ bingo-z.png https://d8j0ntlcm91z4.cloudfront.net/user_3JLlOX0dXEMrNVnkIm8bsBlXdm
 bingo-h.png https://d8j0ntlcm91z4.cloudfront.net/user_3JLlOX0dXEMrNVnkIm8bsBlXdmW/hf_20261016_073352_9a20a20c-84fc-4c2f-a32a-093ad4549c48.png
 ceo-z.png https://d8j0ntlcm91z4.cloudfront.net/user_3JLlOX0dXEMrNVnkIm8bsBlXdmW/hf_20261016_073353_189144eb-dd52-436c-87a7-f4af8a8b9625.png
 ceo-h.png https://d8j0ntlcm91z4.cloudfront.net/user_3JLlOX0dXEMrNVnkIm8bsBlXdmW/hf_20261016_073353_86fc5d25-a87f-41c9-9e3e-8b13a98fe696.png
+qrcode.js https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js
+jsQR.js https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js

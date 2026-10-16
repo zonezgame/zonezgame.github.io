@@ -356,7 +356,7 @@ function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.la
  <div class="stat"><label>Flash ${S.flash}/${FLASH_MAX}</label><div class="pips">${pipsHTML()}</div><small>+1 mỗi 5 phút</small></div></div>
  <div class="sec"><button class="cta" id="go" type="button">DÒ ZOMBIE</button>
  <p class="note">${first?'Lần dò đầu tiên hôm nay sẽ gặp nhanh.':'Có lúc gặp ngay, có lúc phải dò lâu. Dò quá 45 giây chắc chắn gặp.'}</p>
- <p class="note" style="margin:0">Hết flash? Ghé quầy THEZONE, nhân viên nạp đầy cho bạn.</p></div>
+ <button class="btn" id="scanSt" type="button" style="width:100%">⚡ Quét QR trạm nạp flash</button><p class="note" style="margin:0">Hết flash? Quét QR Trạm nạp ZONE Z ở các điểm đối tác, mua ở Shop, hoặc ghé quầy THEZONE.</p></div>
  <div class="sec"><h3>Sổ zombie</h3><div class="list">${rows}</div></div>
  <p class="motto">Làm trước · đo sau · sửa ngay</p>`}
 
@@ -414,6 +414,7 @@ function bind(){const on=(id,ev,fn)=>{const el=document.getElementById(id);if(el
  on('mute','click',()=>{S.mute=!S.mute;render()});
  screen.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buy(b)));
  on('goShop','click',()=>{tab='shop';render()});
+ on('scanSt','click',scanStation);
  screen.querySelectorAll('[data-top]').forEach(b=>b.addEventListener('click',()=>redeem(b.dataset.top)));
  screen.querySelectorAll('[data-frame]').forEach(b=>b.addEventListener('click',()=>frameSheet(b.dataset.frame)));
  screen.querySelectorAll('[data-code]').forEach(b=>b.addEventListener('click',()=>{const c=S.codes.find(x=>x.code===b.dataset.code);if(c)codeSheet(c)}))}
@@ -729,7 +730,7 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
 const FB_CONFIG=window.ZONEZ_FIREBASE||null;
 const FB_VER='10.12.2';
 const CLOUD={locked:false,userUnsub:null,on:false,user:null,db:null,auth:null,pushT:0,quota:{},cureUnsub:null,quotaUnsub:null,ready:false};
-const SYNC_KEYS=['owned','equip','charm','shopLog','shopSpent','tz','flash','flashAt','frames','sinceFrame','codes','seen','cured','hunts','topLog','tierLog','lastHuntDay','profile','infectedUntil','bites','cureId'];
+const SYNC_KEYS=['stationLog','owned','equip','charm','shopLog','shopSpent','tz','flash','flashAt','frames','sinceFrame','codes','seen','cured','hunts','topLog','tierLog','lastHuntDay','profile','infectedUntil','bites','cureId'];
 /* Cài đặt chung do chủ tiệm chỉnh ở trang Quầy (config/game) */
 async function loadGameConfig(){try{const sn=await CLOUD.db.collection('config').doc('game').get();if(!sn.exists)return;const g=sn.data();
  for(const k of ['pQuick','pMid','cap','topDay'])if(typeof g[k]==='number')S.cfg[k]=g[k];if(typeof g.firstFast==='boolean')S.cfg.firstFast=g.firstFast;
@@ -751,7 +752,7 @@ async function cloudInit(){if(!FB_CONFIG)return;
   CLOUD.auth.onAuthStateChanged(async u=>{
    if(!u){CLOUD.user=null;try{await CLOUD.auth.signInAnonymously()}catch(e){}return}
    CLOUD.user=u;CLOUD.pulling=true;try{await pullState()}catch(e){}CLOUD.pulling=false;pushNow();
-   await loadGameConfig();CLOUD.ready=true;listenUser();listenCure();listenQuota();handleCureLink();render()})}
+   await loadGameConfig();CLOUD.ready=true;listenUser();listenCure();listenQuota();handleStationLink();handleCureLink();render()})}
  catch(e){CLOUD.on=false}}
 async function pullState(){const uid=CLOUD.user.uid,ref=CLOUD.db.collection('users').doc(uid);const snap=await ref.get();
  if(snap.exists){const d=snap.data();
@@ -812,6 +813,41 @@ function listenCure(){if(!CLOUD.user||!S.cureId||CLOUD.cureUnsub)return;
  CLOUD.cureUnsub=CLOUD.db.collection('cures').doc(S.cureId).onSnapshot(s=>{const d=s.data();if(!d||!d.done)return;
   CLOUD.cureUnsub&&CLOUD.cureUnsub();CLOUD.cureUnsub=null;const was=infected();S.infectedUntil=0;S.cureId=null;save();
   if(was){toast(`${d.byName||'Một người bạn'} đã chụp flash chữa cho bạn!`);tone(880,.12);setTimeout(()=>tone(1320,.2),110)}if($('#hunt').hidden)render()},()=>{})}
+/* ---------- Trạm nạp flash: QR dán tại cửa hàng đối tác, quét là đầy flash ---------- */
+const STATION_LV={nho:{name:'Trạm nhỏ',cap:5},vua:{name:'Trạm vừa',cap:10},lon:{name:'Trạm lớn',cap:25}};
+let PENDING_STATION=new URLSearchParams(location.search).get('tram');
+if(PENDING_STATION)history.replaceState(null,'',location.pathname+location.search.replace(/[?&]tram=[^&]*/,'').replace(/^&/,'?'));
+function stationSheet(title,body,ok){const sh=$('#sheet');sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div style="font-size:44px;line-height:1">${ok?'⚡':'🔒'}</div><h3 style="font-family:var(--display);font-weight:400;font-size:22px;margin:0">${esc(title)}</h3><p class="note" style="margin:0">${body}</p><button class="btn pri" id="stOk" type="button" style="width:100%">${ok?'Đi dò zombie':'Đóng'}</button></div>`;sh.hidden=false;
+ $('#stOk').addEventListener('click',()=>{sh.hidden=true;if(ok){tab='home';render()}})}
+async function chargeAt(id){id=String(id||'').replace(/[^A-Za-z0-9]/g,'').slice(0,20);if(!id)return;
+ if(!CLOUD.on||!CLOUD.user){stationSheet('Chưa kết nối','Trạm nạp cần mạng để kiểm tra lượt. Bật mạng rồi quét lại nhé.',false);return}
+ const db=CLOUD.db,uid=CLOUD.user.uid,stRef=db.collection('stations').doc(id),useRef=db.collection('stationUse').doc(id+'_'+dayKey());
+ try{const r=await db.runTransaction(async tx=>{const st=await tx.get(stRef);if(!st.exists)return{err:'Không tìm thấy trạm này.'};const d=st.data();
+   if(!d.active)return{err:`${esc(d.name||'Trạm')} đang tạm ngưng.`};
+   const u=await tx.get(useRef),cur=u.exists?u.data():{n:0,users:{}};
+   if(cur.users&&cur.users[uid])return{err:`Hôm nay bạn đã nạp ở ${esc(d.name)} rồi. Mai quay lại, hoặc tìm trạm khác.`};
+   if((cur.n||0)>=d.cap)return{err:`${esc(d.name)} đã hết ${d.cap} lượt hôm nay. Tìm trạm khác hoặc ghé quầy THEZONE.`};
+   tx.set(useRef,{n:(cur.n||0)+1,users:Object.assign({},cur.users,{[uid]:Date.now()}),station:id,day:dayKey()});
+   return{ok:true,name:d.name,left:d.cap-(cur.n||0)-1,lv:d.level}});
+  if(!r.ok){stationSheet('Chưa nạp được',r.err,false);return}
+  S.flash=FLASH_MAX;S.flashAt=Date.now();S.stationLog=(S.stationLog||[]).concat([{id,at:Date.now()}]).slice(-100);save();render();
+  try{tone(660,.1);setTimeout(()=>tone(990,.12),90);setTimeout(()=>tone(1320,.2),180);buzz([40,40,80])}catch(e){}
+  stationSheet('Đã nạp đầy flash!',`<b>${esc(r.name)}</b> · ${(STATION_LV[r.lv]||{}).name||'Trạm nạp'}<br>Flash: <b>${FLASH_MAX}/${FLASH_MAX}</b>. Trạm còn <b>${r.left}</b> lượt hôm nay.`,true)}
+ catch(e){stationSheet('Chưa nạp được','Mạng chập chờn, thử quét lại nhé.',false)}}
+async function handleStationLink(){if(!PENDING_STATION)return;const id=PENDING_STATION;PENDING_STATION=null;await chargeAt(id)}
+/* Quét QR trạm bằng camera ngay trong game */
+let SCAN={stream:null,on:false,lib:null};
+async function scanStation(){const sh=$('#sheet');sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Quét trạm nạp"><h3 style="font-family:var(--display);font-weight:400;font-size:20px;margin:0">Quét QR trạm nạp</h3><video id="scV" playsinline muted style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#000"></video><p class="note" id="scMsg" style="margin:0">Đưa mã QR của trạm vào khung.</p><button class="btn" id="scX" type="button" style="width:100%">Đóng</button></div>`;sh.hidden=false;
+ const stop=()=>{SCAN.on=false;if(SCAN.stream){SCAN.stream.getTracks().forEach(t=>t.stop());SCAN.stream=null}};
+ $('#scX').addEventListener('click',()=>{stop();sh.hidden=true});
+ try{if(!SCAN.lib){await loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');SCAN.lib=window.jsQR}
+  SCAN.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});const v=$('#scV');v.srcObject=SCAN.stream;await v.play();SCAN.on=true}
+ catch(e){$('#scMsg').textContent='Không mở được camera. Dùng app camera của máy để quét QR cũng được.';return}
+ const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+ const tick=()=>{if(!SCAN.on)return;const v=$('#scV');if(v&&v.videoWidth){const w=Math.min(640,v.videoWidth),h=Math.round(w*v.videoHeight/v.videoWidth);cv.width=w;cv.height=h;cx.drawImage(v,0,0,w,h);
+   const r=SCAN.lib(cx.getImageData(0,0,w,h).data,w,h);if(r){let id=null;try{id=new URL(r.data).searchParams.get('tram')}catch(e){}
+    if(id){stop();chargeAt(id);return}$('#scMsg').textContent='Mã này không phải trạm nạp ZONE Z.'}}
+  requestAnimationFrame(tick)};tick()}
 async function handleCureLink(){const id=new URLSearchParams(location.search).get('cure');if(!id||!CLOUD.user)return;history.replaceState(null,'',location.pathname);
  let d;try{const s=await CLOUD.db.collection('cures').doc(id).get();d=s.exists?s.data():null}catch(e){d=null}
  const sh=$('#sheet');const close='<button class="btn" id="cClose" type="button" style="width:100%">Đóng</button>';

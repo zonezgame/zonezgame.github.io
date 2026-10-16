@@ -41,6 +41,11 @@ textarea{min-height:96px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid2 label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
 .ck{display:flex;align-items:center;gap:8px;font-size:15px}.ck input{width:auto}
 .msg{font-size:15px;margin:0;font-weight:700}
+.tr{display:flex;flex-direction:column;gap:8px;border:2px solid var(--ink);border-radius:14px;padding:10px 12px;background:#fff}
+.tr .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.tr .top b{font-size:16px}
+.tr .bar{height:8px;border-radius:99px;background:#eee6b8;overflow:hidden}.tr .bar i{display:block;height:100%;background:var(--accent)}
+.tr .row button,.tr .row a,.tr .row select{padding:8px;font-size:14px;border-width:2px;border-radius:12px;text-align:center;text-decoration:none;color:var(--ink);font-weight:700}
+.tr .row a{border:2px solid var(--ink);background:var(--lime)}
 #gCard,#aCard{display:flex;flex-direction:column;gap:10px}#aCard:not(:empty){border-top:3px solid var(--ink);padding-top:14px;margin-top:4px}
 </style></head><body>
 <div class="wrap">
@@ -104,6 +109,15 @@ textarea{min-height:96px}
   <label class="ck"><input type="checkbox" id="accGuest"> Hiện cả người chơi thử (chưa đặt PIN)</label>
   <div class="acc" id="accList"></div>
   <div id="aCard"></div>
+ </section>
+
+ <section class="box">
+  <h2>Trạm nạp flash</h2>
+  <p class="muted">Dán QR ở cửa hàng đối tác. Khách quét là đầy flash. Mỗi khách nạp 1 lần mỗi ngày tại một trạm; hết lượt trong ngày thì trạm tạm khoá tới 0 giờ.</p>
+  <div class="row"><input id="trName" class="num" placeholder="Tên trạm, ví dụ: Tạp hoá Cô Ba" maxlength="40" autocomplete="off">
+   <select id="trLv" style="flex:0 0 40%"><option value="nho">Nhỏ · 5 lượt/ngày</option><option value="vua">Vừa · 10 lượt/ngày</option><option value="lon">Lớn · 25 lượt/ngày</option></select></div>
+  <button id="trAdd" type="button">Tạo trạm</button><p class="msg" id="trMsg"></p>
+  <div class="acc" id="trList"></div>
  </section>
 
  <section class="box">
@@ -235,6 +249,7 @@ async function loadAdmin(){$('#ov').innerHTML='<p class="muted">Đang tải…</
   const tz=reg.reduce((a,u)=>a+(u.d.tz||0),0);
   $('#ov').innerHTML=k(vn(reg.length),'tài khoản đăng ký')+k(vn(reg.filter(u=>(u.d.createdAt||0)>=t0).length),'đăng ký hôm nay')+k(vn(reg.filter(u=>(u.d.createdAt||0)>=w0).length),'đăng ký 7 ngày')+k(vn(USERS.filter(u=>(u.d.updatedAt||0)>=t0).length),'người chơi hôm nay')
    +k(vn(guests.length),'chơi thử chưa đặt PIN')+k(vn(reg.reduce((a,u)=>a+curedOf(u.d),0)),'zombie đã chữa')+k(vn(cq.size),'mã phát hôm nay')+k(vn(tz),'TZ khách đang giữ')+k(vn(USERS.reduce((a,u)=>a+(u.d.shopSpent||0),0)),'TZ đã tiêu ở Shop')+k(vn(USERS.reduce((a,u)=>a+((u.d.shopLog||[]).filter(x=>x.at>=t0).length),0)),'lượt mua Shop hôm nay');
+  loadStations().then(n=>{$('#ov').insertAdjacentHTML('beforeend',k(vn(n),'lượt nạp ở trạm hôm nay')+k(vn(STATIONS.filter(x=>x.d.active).length),'trạm đang mở'))});
   $('#ovNote').textContent=`TZ khách đang giữ ứng với khoảng ${vn(tz*10)}đ giá bán topping nếu đổi hết. ${reg.filter(u=>u.d.locked).length} tài khoản đang khoá.`;
   const g=gs.exists?gs.data():{};$('#gQuick').value=g.pQuick??30;$('#gMid').value=g.pMid??50;$('#gCap').value=g.cap??45;$('#gTop').value=g.topDay??1;$('#gFirst').checked=g.firstFast??true;$('#gSeason').value=g.season||'halloween';
   $('#stEmails').value=staffCfg.emails.join('\n');$('#stAdmins').value=staffCfg.admins.join('\n');
@@ -247,6 +262,27 @@ function renderList(){const q=nickNorm($('#accQ').value),all=$('#accGuest').chec
  if(L.length>200)$('#accList').insertAdjacentHTML('beforeend',`<p class="muted">Đang hiện 200/${L.length}. Gõ tên để lọc.</p>`)}
 $('#accQ').addEventListener('input',renderList);$('#accSort').addEventListener('change',renderList);$('#accGuest').addEventListener('change',renderList);
 $('#accList').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(!b)return;const u=USERS.find(x=>x.id===b.dataset.id);if(u){card($('#aCard'),u.id,u.d,true);$('#aCard').scrollIntoView({behavior:'smooth',block:'start'})}});
+
+/* ---------- Trạm nạp flash ---------- */
+const LV={nho:{name:'Nhỏ',cap:5},vua:{name:'Vừa',cap:10},lon:{name:'Lớn',cap:25}};
+const gameDay=(d=new Date())=>d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+const newId=()=>{const A='abcdefghjkmnpqrstuvwxyz23456789';let x='';for(let i=0;i<8;i++)x+=A[Math.floor(Math.random()*A.length)];return x};
+let STATIONS=[],USE={};
+async function loadStations(){try{const [sq,uq]=await Promise.all([db.collection('stations').get(),db.collection('stationUse').where('day','==',gameDay()).get()]);
+  STATIONS=[];sq.forEach(x=>STATIONS.push({id:x.id,d:x.data()}));USE={};uq.forEach(x=>{const d=x.data();USE[d.station]=d.n||0});
+  STATIONS.sort((a,b)=>(b.d.createdAt||0)-(a.d.createdAt||0));renderStations();return Object.values(USE).reduce((a,b)=>a+b,0)}
+ catch(e){$('#trList').innerHTML=`<p class="muted">Chưa tải được trạm (${esc(e.code||'lỗi')}).</p>`;return 0}}
+function renderStations(){$('#trList').innerHTML=STATIONS.map(({id,d})=>{const n=USE[id]||0,cap=d.cap||5,q=`tram.html?id=${encodeURIComponent(id)}&name=${encodeURIComponent(d.name||'')}&lv=${d.level}`;
+  return `<div class="tr" data-st="${id}"><div class="top"><b>${esc(d.name)}${d.active?'':'<span class="tag">tạm ngưng</span>'}</b><span class="muted">${LV[d.level]?LV[d.level].name:''} · hôm nay ${n}/${cap}</span></div>
+  <div class="bar"><i style="width:${Math.min(100,n/cap*100)}%"></i></div>
+  <div class="row"><a href="${q}" target="_blank" rel="noopener">In QR</a><select data-lv>${Object.entries(LV).map(([k,v])=>`<option value="${k}"${k===d.level?' selected':''}>${v.name} · ${v.cap}</option>`).join('')}</select><button type="button" data-toggle>${d.active?'Tạm ngưng':'Mở lại'}</button></div></div>`}).join('')||'<p class="muted">Chưa có trạm nào. Tạo trạm đầu tiên ở trên.</p>'}
+$('#trAdd').addEventListener('click',async()=>{const name=$('#trName').value.trim(),lv=$('#trLv').value;if(name.length<2){$('#trMsg').textContent='Nhập tên trạm trước.';return}
+ const id=newId();try{await db.collection('stations').doc(id).set({name,level:lv,cap:LV[lv].cap,active:true,createdAt:Date.now(),createdBy:user.email});$('#trName').value='';$('#trMsg').textContent=`Đã tạo "${name}". Bấm "In QR" để in tấm dán.`;loadStations()}
+ catch(e){$('#trMsg').textContent='Chưa tạo được ('+(e.code||'lỗi')+'). Kiểm tra luật Firestore đã cập nhật chưa.'}});
+$('#trList').addEventListener('click',async e=>{const b=e.target.closest('[data-toggle]');if(!b)return;const id=b.closest('[data-st]').dataset.st,st=STATIONS.find(x=>x.id===id);
+ try{await db.collection('stations').doc(id).update({active:!st.d.active});st.d.active=!st.d.active;renderStations()}catch(err){$('#trMsg').textContent='Chưa lưu được.'}});
+$('#trList').addEventListener('change',async e=>{const sel=e.target.closest('[data-lv]');if(!sel)return;const id=sel.closest('[data-st]').dataset.st,st=STATIONS.find(x=>x.id===id),lv=sel.value;
+ try{await db.collection('stations').doc(id).update({level:lv,cap:LV[lv].cap});st.d.level=lv;st.d.cap=LV[lv].cap;renderStations()}catch(err){$('#trMsg').textContent='Chưa lưu được.'}});
 $('#reload').addEventListener('click',loadAdmin);
 $('#gSave').addEventListener('click',async()=>{const n=(id,a,b)=>Math.min(b,Math.max(a,parseInt($(id).value,10)||0));let pQ=n('#gQuick',0,100),pM=n('#gMid',0,100);if(pQ+pM>100)pM=100-pQ;
  try{await db.collection('config').doc('game').set({pQuick:pQ,pMid:pM,cap:n('#gCap',26,120),topDay:n('#gTop',1,10),firstFast:$('#gFirst').checked,season:$('#gSeason').value,updatedAt:Date.now(),updatedBy:user.email});$('#gMsg').textContent='Đã lưu. Phần còn lại '+(100-pQ-pM)+'% là nhóm dò lâu.'}

@@ -65,6 +65,26 @@ service cloud.firestore {
         && changed().hasOnly(['done', 'by', 'byName', 'doneAt']);
     }
 
+    // Trạm nạp flash: quản lý tạo và sửa; ai đã đăng nhập cũng đọc được.
+    match /stations/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Lượt nạp theo trạm theo ngày (id = maTram_ngay): mỗi lần tăng đúng 1, không vượt sức chứa,
+    // mỗi người chỉ được ghi tên mình một lần mỗi ngày tại một trạm.
+    function station(key) { return get(/databases/$(db)/documents/stations/$(key.split('_')[0])).data; }
+    match /stationUse/{key} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && station(key).active == true
+        && request.resource.data.keys().hasOnly(['n', 'users', 'station', 'day'])
+        && request.resource.data.n == (resource == null ? 0 : resource.data.n) + 1
+        && request.resource.data.n <= station(key).cap
+        && !(resource != null && request.auth.uid in resource.data.users)
+        && request.resource.data.users.diff(resource == null ? {} : resource.data.users).affectedKeys().hasOnly([request.auth.uid]);
+    }
+
     // config/staff: emails (nhân viên), admins (quản lý). config/game: cài đặt chung của game.
     // Ai cũng đọc được; chỉ quản lý sửa (từ tab Quản lý của trang Quầy).
     match /config/{doc} {
