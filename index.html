@@ -292,7 +292,9 @@ let onSave=()=>{};const saveLocal=()=>{try{localStorage.setItem(KEY,JSON.stringi
 const INFECT_MS=30*60*1000;
 const infected=()=>S.infectedUntil>Date.now();
 const AVATARS=['trasua','songao','shipper','deadline','ngugat','onthi','doidem','ceo','bingo','chambai','ongtuyet'];
-function avatarSrc(){const id=(S.profile&&S.profile.avatar)||'trasua';return infected()?SPRITES[id].z:SPRITES[id].h}
+/* Ảnh mặt: dùng ảnh cắt sẵn (img/nv/*a.webp) nếu nhân vật có hình mới */
+const face=(id,k)=>(typeof HEAD!=='undefined'&&HEAD[id])?`img/nv/${id}-${k}a.webp`:SPRITES[id][k];
+function avatarSrc(){const id=(S.profile&&S.profile.avatar)||'trasua';return face(id,infected()?'z':'h')}
 function mmss(ms){const t=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}
 function regen(){const now=Date.now();if(S.flash>=FLASH_MAX){S.flashAt=now;return}
  const n=Math.floor((now-S.flashAt)/REGEN_MS);if(n>0){S.flash=Math.min(FLASH_MAX,S.flash+n);S.flashAt+=n*REGEN_MS}}
@@ -321,7 +323,7 @@ function render(){regen();saveLocal();
 
 function pipsHTML(){let s='';for(let i=0;i<FLASH_MAX;i++)s+=`<i class="${i<S.flash?'on':''}"></i>`;return s}
 function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.lastHuntDay!==dayKey();
- const rows=allZombies().map(z=>`<div class="row"><div class="nm ti"><img src="${S.cured[z.id]?SPRITES[z.id].h:SPRITES[z.id].z}" alt="" width="48" height="48" style="${S.seen[z.id]?'':'filter:brightness(0);opacity:.45'}"><span><b>${esc(z.name)}</b><span class="tier t${z.tier}">${TIERS[z.tier].name}</span></span></div><div class="meta">${S.cured[z.id]?`chữa ${S.cured[z.id]}`:S.seen[z.id]?`gặp ${S.seen[z.id]}`:'chưa gặp'}</div></div>`).join('');
+ const rows=allZombies().map(z=>`<div class="row"><div class="nm ti"><img src="${face(z.id,S.cured[z.id]?'h':'z')}" alt="" width="48" height="48" style="${S.seen[z.id]?'':'filter:brightness(0);opacity:.45'}"><span><b>${esc(z.name)}</b><span class="tier t${z.tier}">${TIERS[z.tier].name}</span></span></div><div class="meta">${S.cured[z.id]?`chữa ${S.cured[z.id]}`:S.seen[z.id]?`gặp ${S.seen[z.id]}`:'chưa gặp'}</div></div>`).join('');
  const inf=infected(),pf=S.profile||{name:'Đạo hữu',avatar:'trasua'};
  return `<div class="top"><div><div class="wm">ZONE <span>Z</span></div><span class="by">THEZONE · bản test</span></div><button class="chip" id="mute" type="button">Âm thanh: ${S.mute?'tắt':'bật'}</button></div>
  <button class="me${inf?' inf':''}" id="meBtn" type="button"><img src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>${inf?`Nhiễm độc · còn <span id="infT">${mmss(S.infectedUntil-Date.now())}</span>`:`Đã cứu ${Object.values(S.cured).reduce((a,b)=>a+b,0)} người · bấm để đổi nhân vật`}</small></span></button>
@@ -410,7 +412,7 @@ function qr(cv,seed){const n=25,ctx=cv.getContext('2d');cv.width=n*8;cv.height=n
  fin(1,1);fin(n-8,1);fin(1,n-8)}
 function profileSheet(first){const sh=$('#sheet');let pick=(S.profile&&S.profile.avatar)||'trasua';
  const nick=userNick(),cloud=!!FB_CONFIG;
- const grid=()=>AVATARS.map(id=>`<button type="button" data-av="${id}" aria-pressed="${id===pick}"><img src="${SPRITES[id].h}" alt=""></button>`).join('');
+ const grid=()=>AVATARS.map(id=>`<button type="button" data-av="${id}" aria-pressed="${id===pick}"><img src="${face(id,'h')}" alt=""></button>`).join('');
  sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Nhân vật của bạn"><h3 style="font-family:var(--display);font-weight:400;font-size:20px">${first?'Chọn nhân vật của bạn':'Đổi nhân vật'}</h3>
  <p class="note" style="margin:0">Bị zombie cắn, nhân vật này sẽ hóa zombie.</p><div class="avgrid" id="avg">${grid()}</div>
  <label for="pfName" class="note" style="align-self:flex-start;margin:0">Nickname</label><input class="field" id="pfName" maxlength="18" autocomplete="off" value="${esc((S.profile&&S.profile.name)||'')}" placeholder="Ví dụ: Tín Đạo Sĩ ✨"${nick?' disabled':''}>
@@ -459,6 +461,9 @@ function buildBg(){const c=document.createElement('canvas');c.width=W*DPR;c.heig
  bgCanvas=c}
 
 /* ---------- Nhân vật: hình vẽ zombie / đã tỉnh ---------- */
+/* Hình nhân vật do THEZONE thiết kế (img/nv): trước và sau khi chữa. HEAD: tâm đầu [x,y] theo tỉ lệ khung 512 */
+var HEAD={"ngugat":[0.475,0.222],"deadline":[0.504,0.219],"trasua":[0.506,0.223],"songao":[0.464,0.231],"shipper":[0.462,0.224],"onthi":[0.501,0.227],"doidem":[0.473,0.223],"bingo":[0.432,0.235],"ceo":[0.52,0.21]};
+for(const id of Object.keys(HEAD))SPRITES[id]={z:`img/nv/${id}-z.webp`,h:`img/nv/${id}-h.webp`};
 const SPR={};for(const [id,v] of Object.entries(SPRITES)){const a=new Image(),b=new Image();a.src=v.z;b.src=v.h;SPR[id]={z:a,h:b}}
 /* Thời gian (giây) để zombie đi từ xa tới sát mặt, và hệ số khó theo bậc */
 const AP={1:8,2:7,3:6.5,4:6,5:5.5},MUL={1:1,2:.95,3:.9,4:.85,5:.8};
@@ -485,6 +490,7 @@ function geom(d,t){const n=1-d,base=Math.min(W*1.05,Hh*.62);
  const zy=HS.zbase+Math.sin(t*.7+HS.ph)*(GYRO?2+5*d:5+9*d)+Math.sin(t*1.9+HS.ph*2)*(GYRO?1:2.5)+(HS.side||0);
  const cx=W/2-wrapDeg(zy-VIEW-ASSIST)*(W/FOV);
  const top=feet-size*(452/512)-Math.abs(Math.sin(t*5.5))*size*.018;
+ const hd=HEAD[HS.z&&HS.z.id];if(hd)return{size,cx,top,hx:cx+size*(hd[0]-.5),hy:top+size*hd[1],hr:size*.15,n};
  return{size,cx,top,hx:cx-size*.043,hy:top+size*.365,hr:size*.195,n}}
 function drawSprite(g,t,k,alpha){const sp=SPR[HS.z.id];if(!sp)return;ctx.save();const piv=g.top+g.size*.88;
  ctx.translate(g.cx,piv);ctx.rotate(Math.sin(t*5.5)*.04*(1-k));ctx.translate(-g.cx,piv*-1);
@@ -534,7 +540,7 @@ function finish(result){if(HS.done)return;HS.done=true;const rec={wait:HS.wait==
   if(HS.tier===5)f=CEO_FRAME;else if(S.sinceFrame>=29||Math.random()<T.frame){pity=S.sinceFrame>=29;const fs=SEASONS[S.season].frames,fresh=fs.filter(x=>!S.frames[x.id]),pool=fresh.length?fresh:fs;f=pool[ri(0,pool.length-1)]}
   if(f){if(S.frames[f.id]){dup=true;items.push(`<div><span>Frame ${esc(f.name)} (trùng)</span><b>+50 TZ</b></div>`)}else{S.frames[f.id]={at:Date.now()};items.push(`<div class="rare"><span>Frame mới: ${esc(f.name)}${pity?' · bảo hiểm':''}</span><b>M BOOTH</b></div>`)}S.sinceFrame=0;rec.frame=f.id}else S.sinceFrame++;
   const sick=infected();if(sick)tz=Math.round(tz*.5);const total=tz+(dup?50:0);S.tz+=total;rec.tz=total;S.cured[HS.z.id]=(S.cured[HS.z.id]||0)+1;
-  html=`<div class="who-img"><img src="${SPRITES[HS.z.id].h}" alt="" width="120" height="120"></div><h3>Đã cứu 1 người</h3><p class="who">${esc(HS.z.name)} · ${T.name} · gặp sau ${HS.wait.toFixed(1)} giây${HS.perfects?` · ${HS.perfects} cú cận mặt`:''}</p>
+  html=`<div class="who-img"><img src="${face(HS.z.id,'h')}" alt="" width="120" height="120" style="border-radius:20px"></div><h3>Đã cứu 1 người</h3><p class="who">${esc(HS.z.name)} · ${T.name} · gặp sau ${HS.wait.toFixed(1)} giây${HS.perfects?` · ${HS.perfects} cú cận mặt`:''}</p>
    <div class="loot"><div><span>TZ đồng${HS.perfects?` (+${Math.round(bonus*100)}% can đảm)`:''}${sick?' · nhiễm độc −50%':''}</span><b>+${fmt(tz)}</b></div>${items.join('')}</div>
    <p class="note" style="margin:0">${f?'':`Frame: chưa rơi. Còn ${30-S.sinceFrame} lần chữa nữa là chắc chắn có.`}</p>`}
  else if(result==='bitten'){const lost=Math.min(2,S.flash);S.flash-=lost;S.infectedUntil=Math.max(S.infectedUntil,Date.now())+INFECT_MS;S.bites=(S.bites||0)+1;
@@ -711,8 +717,8 @@ async function handleCureLink(){const id=new URLSearchParams(location.search).ge
  const sh=$('#sheet');const close='<button class="btn" id="cClose" type="button" style="width:100%">Đóng</button>';
  if(!d){sh.innerHTML=`<div class="card"><h3>Link không còn dùng được</h3>${close}</div>`}
  else if(d.uid===CLOUD.user.uid){sh.innerHTML=`<div class="card"><h3>Đây là link của bạn</h3><p class="note" style="margin:0">Gửi link này cho bạn bè để họ chụp flash cứu bạn.</p>${close}</div>`}
- else if(d.done){sh.innerHTML=`<div class="card"><img src="${SPRITES[d.avatar]?SPRITES[d.avatar].h:''}" alt="" width="140" height="140"><h3>${esc(d.name)} đã được cứu rồi</h3><p class="note" style="margin:0">${esc(d.byName||'Một người bạn')} nhanh tay hơn bạn.</p>${close}</div>`}
- else{sh.innerHTML=`<div class="card"><img id="cImg" src="${SPRITES[d.avatar]?SPRITES[d.avatar].z:''}" alt="" width="160" height="160"><h3 style="font-family:var(--display);font-weight:400">${esc(d.name)} bị zombie cắn!</h3>
+ else if(d.done){sh.innerHTML=`<div class="card"><img src="${SPRITES[d.avatar]?face(d.avatar,'h'):''}" alt="" width="140" height="140"><h3>${esc(d.name)} đã được cứu rồi</h3><p class="note" style="margin:0">${esc(d.byName||'Một người bạn')} nhanh tay hơn bạn.</p>${close}</div>`}
+ else{sh.innerHTML=`<div class="card"><img id="cImg" src="${SPRITES[d.avatar]?face(d.avatar,'z'):''}" alt="" width="160" height="160"><h3 style="font-family:var(--display);font-weight:400">${esc(d.name)} bị zombie cắn!</h3>
   <p class="note" style="margin:0">Chụp một phát flash để đưa bạn ấy trở lại. Bạn được +30 TZ vì làm việc tốt.</p><button class="cta" id="cDo" type="button" style="font-size:20px">CHỤP FLASH CỨU</button>${close}</div>`}
  sh.hidden=false;$('#cClose').addEventListener('click',()=>{sh.hidden=true});
  const b=$('#cDo');if(b)b.addEventListener('click',async()=>{b.disabled=true;ac();shutter();buzz(40);
