@@ -822,12 +822,22 @@ function stationSheet(title,body,ok){const sh=$('#sheet');sh.innerHTML=`<div cla
 async function chargeAt(id){id=String(id||'').replace(/[^A-Za-z0-9]/g,'').slice(0,20);if(!id)return;
  if(!CLOUD.on||!CLOUD.user){stationSheet('Chưa kết nối','Trạm nạp cần mạng để kiểm tra lượt. Bật mạng rồi quét lại nhé.',false);return}
  const db=CLOUD.db,uid=CLOUD.user.uid,stRef=db.collection('stations').doc(id),useRef=db.collection('stationUse').doc(id+'_'+dayKey());
+ /* Kiểm tra vị trí: trạm có toạ độ thì phải đứng gần trạm mới nạp được */
+ let geo=null;try{const pre=await stRef.get();const pd=pre.exists?pre.data():null;
+  if(pd&&typeof pd.lat==='number'&&typeof pd.lng==='number'){stationSheet('Đang kiểm tra vị trí…','Cho phép game dùng vị trí để xác nhận bạn đang ở <b>'+esc(pd.name||'trạm')+'</b>.',false);$('#stOk').hidden=true;
+   let pos;try{pos=await new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:12000,maximumAge:30000}):no({code:2}))}
+   catch(e){stationSheet('Cần bật vị trí',e&&e.code===1?'Trạm này cần vị trí (GPS) để chống quét từ xa. Vào cài đặt trình duyệt, cho phép <b>zonezgame.github.io</b> dùng vị trí rồi quét lại.':'Chưa lấy được vị trí. Bật GPS, ra chỗ thoáng rồi quét lại.',false);return}
+   const R=6371000,t=Math.PI/180,dLa=(pos.coords.latitude-pd.lat)*t,dLo=(pos.coords.longitude-pd.lng)*t,
+    h=Math.sin(dLa/2)**2+Math.cos(pd.lat*t)*Math.cos(pos.coords.latitude*t)*Math.sin(dLo/2)**2,dist=2*R*Math.asin(Math.sqrt(h)),acc=pos.coords.accuracy||0,lim=(pd.radius||150)+Math.min(acc,100);
+   geo={d:Math.round(dist),acc:Math.round(acc)};
+   if(dist>lim){stationSheet('Bạn chưa ở trạm',`Bạn đang cách <b>${esc(pd.name)}</b> khoảng <b>${dist<1000?Math.round(dist)+' m':(dist/1000).toFixed(1)+' km'}</b>. Đến gần trạm (trong ${pd.radius||150} m) rồi quét lại nhé.`,false);return}}}
+ catch(e){}
  try{const r=await db.runTransaction(async tx=>{const st=await tx.get(stRef);if(!st.exists)return{err:'Không tìm thấy trạm này.'};const d=st.data();
    if(!d.active)return{err:`${esc(d.name||'Trạm')} đang tạm ngưng.`};
    const u=await tx.get(useRef),cur=u.exists?u.data():{n:0,users:{}};
    if(cur.users&&cur.users[uid])return{err:`Hôm nay bạn đã nạp ở ${esc(d.name)} rồi. Mai quay lại, hoặc tìm trạm khác.`};
    if((cur.n||0)>=d.cap)return{err:`${esc(d.name)} đã hết ${d.cap} lượt hôm nay. Tìm trạm khác hoặc ghé quầy THEZONE.`};
-   tx.set(useRef,{n:(cur.n||0)+1,users:Object.assign({},cur.users,{[uid]:Date.now()}),station:id,day:dayKey()});
+   tx.set(useRef,{n:(cur.n||0)+1,users:Object.assign({},cur.users,{[uid]:geo?{at:Date.now(),d:geo.d,acc:geo.acc}:Date.now()}),station:id,day:dayKey()});
    return{ok:true,name:d.name,left:d.cap-(cur.n||0)-1,lv:d.level}});
   if(!r.ok){stationSheet('Chưa nạp được',r.err,false);return}
   S.flash=FLASH_MAX;S.flashAt=Date.now();S.stationLog=(S.stationLog||[]).concat([{id,at:Date.now()}]).slice(-100);save();render();

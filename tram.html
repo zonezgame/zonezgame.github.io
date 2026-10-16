@@ -47,7 +47,7 @@ s.onload=()=>{const qr=qrcode(0,'M');qr.addData(url);qr.make();
   <div class="qr">${qr.createSvgTag({cellSize:6,margin:0,scalable:true})}</div>
   <div class="name">${esc(name)}</div>
   <div class="steps"><div><b>1</b>Mở camera điện thoại hoặc nút "Quét trạm" trong game</div><div><b>2</b>Quét mã QR ở trên</div><div><b>3</b>Flash đầy 12/12, đi dò zombie tiếp</div></div>
-  <p class="rule">Mỗi người nạp 1 lần mỗi ngày tại trạm này. Trạm có ${LV[1]} lượt/ngày, hết lượt mở lại lúc 0 giờ.</p>
+  <p class="rule">Đứng tại trạm và bật vị trí (GPS) khi quét. Mỗi người nạp 1 lần mỗi ngày tại trạm này. Trạm có ${LV[1]} lượt/ngày, hết lượt mở lại lúc 0 giờ.</p>
   <div class="foot">THEZONE · LÊ DUẨN, PHÚ MỸ, PHÚ TÂN · ZONEZGAME.GITHUB.IO</div>
  </section>`};
 s.onerror=()=>{root.innerHTML='<div class="err">Chưa tải được bộ tạo QR. Kiểm tra mạng rồi tải lại trang.</div>'};
