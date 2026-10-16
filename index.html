@@ -434,7 +434,7 @@ function profileSheet(first){const sh=$('#sheet');let pick=(S.profile&&S.profile
  const grid=()=>AVATARS.map(id=>`<button type="button" data-av="${id}" aria-pressed="${id===pick}"><img src="${SPRITES[id].h}" alt=""></button>`).join('');
  sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Nhân vật của bạn"><h3 style="font-family:var(--display);font-weight:400;font-size:20px">${first?'Chọn nhân vật của bạn':'Đổi nhân vật'}</h3>
  <p class="note" style="margin:0">Bị zombie cắn, nhân vật này sẽ hóa zombie.</p><div class="avgrid" id="avg">${grid()}</div>
- <label for="pfName" class="note" style="align-self:flex-start;margin:0">Nickname</label><input class="field" id="pfName" maxlength="18" autocomplete="off" value="${esc((S.profile&&S.profile.name)||'')}" placeholder="Ví dụ: TinDaoSi"${nick?' disabled':''}>
+ <label for="pfName" class="note" style="align-self:flex-start;margin:0">Nickname</label><input class="field" id="pfName" maxlength="18" autocomplete="off" value="${esc((S.profile&&S.profile.name)||'')}" placeholder="Ví dụ: Tín Đạo Sĩ ✨"${nick?' disabled':''}>
  ${cloud&&!nick?`<input class="field" id="acPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="PIN 4 số (tự đặt)"><p class="note" style="margin:0">${first?'Có PIN là có tài khoản, tự lưu. Đổi máy chỉ cần nhập lại nickname và PIN. Bỏ trống PIN để chơi thử.':'Đặt PIN 4 số để lưu tài khoản bằng nickname này.'}</p>`:''}
  <button class="btn pri" id="pfSave" type="button" style="width:100%">${first?'Vào game':'Lưu'}</button>
  ${nick?`<p class="note" style="margin:0">Tài khoản <b>${esc((S.profile&&S.profile.name)||nick)}</b> · tự lưu. Quên PIN thì tạo nickname mới.</p><button class="btn" id="acOut" type="button" style="width:100%">Đăng xuất</button>`:''}
@@ -669,17 +669,19 @@ onSave=pushSoon;
 /* Tài khoản = nickname + PIN 4 số (Firebase Email/Password, email dựng từ nickname bỏ dấu) */
 const NICK_DOMAIN='nick.zonez.app';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function nickKey(v){return String(v||'').replace(/[đĐ]/g,'d').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+/* Nickname giữ nguyên dấu và ký tự tự do; không phân biệt hoa thường và khoảng trắng thừa. Email nội bộ là mã băm của nickname. */
+const nickNorm=v=>String(v||'').normalize('NFC').trim().replace(/\s+/g,' ').toLowerCase();
+async function nickKey(v){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(nickNorm(v)));return 'n'+[...new Uint8Array(d)].slice(0,20).map(x=>x.toString(16).padStart(2,'0')).join('')}
 const userNick=()=>{const e=CLOUD.user&&CLOUD.user.email||'';return e.endsWith('@'+NICK_DOMAIN)?e.split('@')[0]:''};
 /* Trả về 'new' (tạo mới), 'old' (vào tài khoản cũ) hoặc false */
 async function nickLogin(raw,pinRaw){
- const key=nickKey(raw),pin=String(pinRaw||'').trim();
- if(key.length<3){toast('Nickname cần ít nhất 3 chữ hoặc số.');return false}
- if(key.length>20){toast('Nickname dài quá, tối đa 20 ký tự.');return false}
+ const n=[...nickNorm(raw)].length,pin=String(pinRaw||'').trim();
+ if(n<2){toast('Nickname cần ít nhất 2 ký tự.');return false}
+ if(n>18){toast('Nickname dài quá, tối đa 18 ký tự.');return false}
  if(!/^\d{4}$/.test(pin)){toast('PIN gồm đúng 4 số.');return false}
  for(let i=0;i<40&&!CLOUD.on;i++)await sleep(200);
  if(!CLOUD.on){toast('Chưa kết nối được máy chủ, thử lại sau.');return false}
- const email=key+'@'+NICK_DOMAIN,pass='zonez-'+pin,u=CLOUD.auth.currentUser;
+ const email=(await nickKey(raw))+'@'+NICK_DOMAIN,pass='zonez-'+pin,u=CLOUD.auth.currentUser;
  try{
   if(u&&u.isAnonymous){await u.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email,pass));CLOUD.user=CLOUD.auth.currentUser;S.uid=CLOUD.user.uid}
   else await CLOUD.auth.createUserWithEmailAndPassword(email,pass);
