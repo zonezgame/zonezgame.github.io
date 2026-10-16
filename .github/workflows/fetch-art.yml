@@ -1,0 +1,28 @@
+# Tải ảnh nhân vật đã dựng (danh sách trong ref/urls.txt: "tên-file url" mỗi dòng) về thư mục ref/gen rồi commit.
+name: fetch-art
+on:
+  push:
+    paths: ['ref/urls.txt']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: |
+          mkdir -p ref/gen
+          while read -r name url; do
+            [ -z "$name" ] && continue
+            [ -f "ref/gen/$name" ] && continue
+            curl -fsSL -o "ref/gen/$name" "$url"
+          done < ref/urls.txt
+      - name: Commit
+        run: |
+          git config user.name "zonez-bot"
+          git config user.email "zonez-bot@users.noreply.github.com"
+          git add ref/gen
+          git diff --cached --quiet || git commit -m "Tải ảnh nhân vật đã dựng"
+          git push
