@@ -3,29 +3,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
     function signedIn() { return request.auth != null; }
-    function isStaff() {
+    // Nhân viên và quản lý phải đăng nhập bằng Google (khách dùng nickname nên không giả được).
+    function google() {
       return signedIn() && request.auth.token.email != null
-        && request.auth.token.email.lower() in get(/databases/$(db)/documents/config/staff).data.emails;
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
+    function staffCfg() { return get(/databases/$(db)/documents/config/staff).data; }
+    function isAdmin() { return google() && request.auth.token.email.lower() in staffCfg().get('admins', []); }
+    function isStaff() { return google() && (request.auth.token.email.lower() in staffCfg().get('emails', []) || isAdmin()); }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
 
-    // Dữ liệu người chơi: chỉ chính người đó đọc và ghi.
+    // Tài khoản người chơi.
+    // Người chơi: đọc và ghi dữ liệu của mình, nhưng không tự sửa các trường do quầy cấp và không ghi khi bị khoá.
+    // Nhân viên: xem, nạp flash, giải độc. Quản lý: thêm cộng/trừ TZ, khoá, xoá.
     match /users/{uid} {
-      allow read, write: if signedIn() && request.auth.uid == uid;
-      // Nhân viên tìm khách theo nickname, nạp flash và giải độc.
-      allow read: if isStaff();
-      allow update: if isStaff()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['grantRefill', 'grantCure', 'grantBy']);
+      allow read: if isMe(uid) || isStaff();
+      allow create: if isMe(uid)
+        && !request.resource.data.keys().hasAny(['locked', 'grantRefill', 'grantCure', 'grantTzAt', 'grantTzAmt', 'grantBy']);
+      allow update: if isMe(uid) && resource.data.get('locked', false) != true
+        && !changed().hasAny(['locked', 'grantRefill', 'grantCure', 'grantTzAt', 'grantTzAmt', 'grantBy']);
+      allow update: if isStaff() && changed().hasOnly(['grantRefill', 'grantCure', 'grantBy']);
+      allow update: if isAdmin() && changed().hasOnly(['grantRefill', 'grantCure', 'grantTzAt', 'grantTzAmt', 'grantBy', 'locked']);
+      allow delete: if isAdmin();
     }
 
     // Mã đổi quà: người chơi tạo mã của mình; nhân viên đọc và đánh dấu đã dùng một lần.
     match /codes/{code} {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid
         && request.resource.data.used == false;
-      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      allow get: if signedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      allow list: if isStaff();
       allow update: if isStaff() && resource.data.used == false
         && request.resource.data.used == true
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedAt', 'usedBy', 'orderK']);
-      allow list: if isStaff();
+        && changed().hasOnly(['used', 'usedAt', 'usedBy', 'orderK']);
     }
 
     // Suất chung cả tiệm mỗi ngày: mỗi lần chỉ tăng 1, không vượt trần.
@@ -51,12 +62,14 @@ service cloud.firestore {
       allow update: if signedIn() && resource.data.done == false
         && request.auth.uid != resource.data.uid
         && request.resource.data.done == true
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done', 'by', 'byName', 'doneAt']);
+        && changed().hasOnly(['done', 'by', 'byName', 'doneAt']);
     }
 
-    // config/staff: emails (nhân viên, Google) và owners (nickname chủ tiệm trong game). Chủ tiệm sửa trong console.
+    // config/staff: emails (nhân viên), admins (quản lý). config/game: cài đặt chung của game.
+    // Ai cũng đọc được; chỉ quản lý sửa (từ tab Quản lý của trang Quầy).
     match /config/{doc} {
       allow read: if signedIn();
+      allow write: if isAdmin();
     }
   }
 }

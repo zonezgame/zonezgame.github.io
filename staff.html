@@ -28,11 +28,25 @@ video{width:100%;border-radius:16px;background:#000;aspect-ratio:3/4;object-fit:
 dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0}dt{color:var(--muted)}dd{margin:0;font-weight:700}
 .list{display:flex;flex-direction:column;gap:6px;font-size:15px}.list div{display:flex;justify-content:space-between;gap:10px;border-top:1px dashed #c9c08a;padding-top:6px}
 .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.kpi b{display:block;font-family:var(--display);font-size:26px;font-weight:400}.kpi span{font-size:13px;color:var(--muted)}
+
+.tabs{display:flex;gap:8px}.tabs button{flex:1;padding:10px;background:#fff}.tabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+.kpi.k4{grid-template-columns:repeat(2,1fr)}.kpi div{background:#fffbe0;border:2px solid var(--ink);border-radius:14px;padding:8px 4px}
+.acc{display:flex;flex-direction:column;gap:6px;max-height:420px;overflow:auto}
+.acc button{display:flex;justify-content:space-between;gap:10px;text-align:left;background:#fff;padding:10px 12px;font-size:15px;border-width:2px}
+.acc button small{display:block;font-weight:500;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--accent);color:#fff;margin-left:6px;vertical-align:middle}
+.tag.g{background:var(--muted)}
+select,textarea{font:inherit;font-size:17px;padding:10px;border:3px solid var(--ink);border-radius:14px;width:100%;background:#fff;color:var(--ink)}
+textarea{min-height:96px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid2 label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
+.ck{display:flex;align-items:center;gap:8px;font-size:15px}.ck input{width:auto}
+.msg{font-size:15px;margin:0;font-weight:700}
+#gCard,#aCard{display:flex;flex-direction:column;gap:10px}#aCard:not(:empty){border-top:3px solid var(--ink);padding-top:14px;margin-top:4px}
 </style></head><body>
 <div class="wrap">
  <div class="band" aria-hidden="true"></div>
  <h1>ZONE Z <span>· QUẦY</span></h1>
- <p class="muted">Quét mã đổi quà của khách, kiểm tra hạn và đơn tối thiểu, rồi xác nhận đã dùng.</p>
+ <p class="muted">Quét mã đổi quà, chăm sóc khách tại quầy và quản lý tài khoản game.</p>
 
  <section class="box" id="login">
   <h2>Đăng nhập nhân viên</h2>
@@ -40,7 +54,13 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0}dt{color:va
   <button id="gIn" type="button">Đăng nhập bằng Google</button>
  </section>
 
- <section class="box" id="scan" hidden>
+ <nav class="tabs" id="tabs" role="tablist" hidden>
+  <button type="button" role="tab" data-tab="counter" aria-selected="true">Quầy</button>
+  <button type="button" role="tab" data-tab="admin" aria-selected="false" id="tabAdmin" hidden>Quản lý</button>
+ </nav>
+
+ <div id="pCounter" hidden style="display:flex;flex-direction:column;gap:16px">
+ <section class="box">
   <h2>Quét mã</h2>
   <video id="cam" playsinline muted></video>
   <div class="row"><button id="camBtn" type="button">Bật camera quét</button></div>
@@ -56,39 +76,90 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0}dt{color:va
   <button class="red" id="useBtn" type="button" disabled>Xác nhận đã dùng</button>
  </section>
 
- <section class="box" id="guest" hidden>
+ <section class="box">
   <h2>Khách tại quầy</h2>
-  <p class="muted">Nạp đầy flash hoặc giải độc cho khách. Hỏi khách nickname trong game.</p>
+  <p class="muted">Hỏi khách nickname trong game để nạp flash hoặc giải độc.</p>
   <div class="row"><input id="nickIn" class="num" placeholder="Nickname của khách" maxlength="18" autocomplete="off"><button id="findBtn" type="button" style="flex:0 0 auto">Tìm</button></div>
-  <dl id="gInfo"></dl>
-  <div class="row" id="gAct" hidden><button id="gRefill" type="button">Nạp đầy flash</button><button class="red" id="gCure" type="button">Giải độc</button></div>
+  <div id="gCard"></div>
  </section>
 
- <section class="box" id="today" hidden>
+ <section class="box">
   <h2>Hôm nay</h2>
   <div class="kpi"><div><b id="kTop">0</b><span>topping đã đổi</span></div><div><b id="kFrame">0</b><span>frame đã dùng</span></div><div><b id="kSum">0</b><span>nghìn đ đơn kèm</span></div></div>
   <div class="list" id="todayList"></div>
  </section>
+ </div>
+
+ <div id="pAdmin" hidden style="display:flex;flex-direction:column;gap:16px">
+ <section class="box">
+  <div class="row" style="align-items:center"><h2>Tổng quan</h2><button id="reload" type="button" style="flex:0 0 auto;padding:8px 14px">Tải lại</button></div>
+  <div class="kpi k4" id="ov"></div>
+  <p class="muted" id="ovNote"></p>
+ </section>
+
+ <section class="box">
+  <h2>Tài khoản</h2>
+  <div class="row"><input id="accQ" class="num" placeholder="Tìm theo tên" autocomplete="off">
+   <select id="accSort" style="flex:0 0 42%"><option value="act">Mới chơi</option><option value="new">Mới tạo</option><option value="tz">Nhiều TZ</option><option value="cure">Chữa nhiều</option></select></div>
+  <label class="ck"><input type="checkbox" id="accGuest"> Hiện cả người chơi thử (chưa đặt PIN)</label>
+  <div class="acc" id="accList"></div>
+  <div id="aCard"></div>
+ </section>
+
+ <section class="box">
+  <h2>Cài đặt game</h2>
+  <p class="muted">Áp dụng cho mọi khách từ lần mở game tiếp theo.</p>
+  <div class="grid2">
+   <label>% gặp ngay (≤5 giây)<input id="gQuick" class="num" type="number" min="0" max="100"></label>
+   <label>% gặp vừa (5–25 giây)<input id="gMid" class="num" type="number" min="0" max="100"></label>
+   <label>Trần chờ (giây)<input id="gCap" class="num" type="number" min="26" max="120"></label>
+   <label>Lượt đổi topping/ngày<input id="gTop" class="num" type="number" min="1" max="10"></label>
+  </div>
+  <label class="ck"><input type="checkbox" id="gFirst"> Lần dò đầu mỗi ngày gặp nhanh</label>
+  <label class="muted" for="gSeason">Mùa sự kiện</label>
+  <select id="gSeason"><option value="halloween">Halloween</option><option value="nhagiao">20/11</option><option value="noel">Noel</option></select>
+  <button id="gSave" type="button">Lưu cài đặt</button><p class="msg" id="gMsg"></p>
+ </section>
+
+ <section class="box">
+  <h2>Nhân viên</h2>
+  <label class="muted" for="stEmails">Email Google của nhân viên quầy (mỗi dòng một email)</label>
+  <textarea id="stEmails" autocomplete="off"></textarea>
+  <label class="muted" for="stAdmins">Email quản lý (thấy tab Quản lý)</label>
+  <textarea id="stAdmins" autocomplete="off"></textarea>
+  <button id="stSave" type="button">Lưu danh sách</button><p class="msg" id="stMsg"></p>
+ </section>
+ </div>
  <p class="muted" id="who"></p>
 </div>
 <script>
 (()=>{"use strict";
-const $=s=>document.querySelector(s);const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const V='10.12.2',CFG=window.ZONEZ_FIREBASE;
 function load(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
-let auth,db,user,cur=null,stream=null,scanning=false;
+const vn=n=>Math.round(n||0).toLocaleString('vi-VN');
+const mm=ms=>{const t=Math.max(0,Math.ceil(ms/1000));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+const ago=t=>{if(!t)return'—';const m=Math.round((Date.now()-t)/60000);return m<1?'vừa xong':m<60?m+' phút trước':m<1440?Math.round(m/60)+' giờ trước':Math.round(m/1440)+' ngày trước'};
+const dayStart=()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime()};
+let auth,db,user,admin=false,staffCfg={emails:[],admins:[]},cur=null,stream=null,scanning=false,USERS=[];
+
 async function init(){if(!CFG){$('#loginMsg').textContent='Chưa có cấu hình Firebase. Chủ tiệm dán cấu hình vào file firebase-config.js.';$('#gIn').disabled=true;return}
  const b=`https://www.gstatic.com/firebasejs/${V}/`;await load(b+'firebase-app-compat.js');await Promise.all([load(b+'firebase-auth-compat.js'),load(b+'firebase-firestore-compat.js')]);
  firebase.initializeApp(CFG);auth=firebase.auth();db=firebase.firestore();
  auth.getRedirectResult().catch(()=>{});
- auth.onAuthStateChanged(async u=>{user=u;if(!u||u.isAnonymous){$('#login').hidden=false;$('#scan').hidden=$('#guest').hidden=$('#today').hidden=true;return}
-  let ok=false;try{const s=await db.collection('config').doc('staff').get();ok=s.exists&&(s.data().emails||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())}catch(e){}
-  $('#who').textContent=`Đang dùng: ${u.email}`;
-  if(!ok){$('#loginMsg').textContent=`Tài khoản ${u.email} chưa có quyền nhân viên. Chủ tiệm thêm email này vào danh sách nhân viên trong Firestore (config/staff, mục emails).`;$('#login').hidden=false;return}
-  $('#login').hidden=true;$('#scan').hidden=false;$('#guest').hidden=false;$('#today').hidden=false;loadToday()})}
-$('#gIn').addEventListener('click',async()=>{const p=new firebase.auth.GoogleAuthProvider();try{await auth.signInWithPopup(p)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')auth.signInWithRedirect(p);else $('#loginMsg').textContent='Chưa đăng nhập được: '+(e.code||'lỗi')}});
+ auth.onAuthStateChanged(async u=>{user=u;const google=u&&u.providerData.some(p=>p.providerId==='google.com');
+  if(!u||!google){$('#login').hidden=false;$('#tabs').hidden=$('#pCounter').hidden=$('#pAdmin').hidden=true;return}
+  const em=(u.email||'').toLowerCase();
+  try{const s=await db.collection('config').doc('staff').get();if(s.exists){const d=s.data();staffCfg={emails:(d.emails||[]).map(x=>x.toLowerCase()),admins:(d.admins||[]).map(x=>x.toLowerCase())}}}catch(e){}
+  admin=staffCfg.admins.includes(em);const ok=admin||staffCfg.emails.includes(em);
+  $('#who').textContent=`Đang dùng: ${u.email}${admin?' · quản lý':''}`;
+  if(!ok){$('#loginMsg').textContent=`Tài khoản ${u.email} chưa có quyền nhân viên. Chủ tiệm thêm email này vào danh sách nhân viên.`;$('#login').hidden=false;return}
+  $('#login').hidden=true;$('#tabs').hidden=false;$('#tabAdmin').hidden=!admin;show('counter');loadToday()})}
+$('#gIn').addEventListener('click',async()=>{const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});try{await auth.signInWithPopup(p)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')auth.signInWithRedirect(p);else $('#loginMsg').textContent='Chưa đăng nhập được: '+(e.code||'lỗi')}});
+function show(t){$('#tabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));$('#pCounter').hidden=t!=='counter';$('#pAdmin').hidden=t!=='admin';if(t==='admin'&&admin)loadAdmin()}
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)show(b.dataset.tab)});
 
-/* Quét QR bằng camera */
+/* ---------- Quét QR ---------- */
 let jsQR=null;
 $('#camBtn').addEventListener('click',async()=>{if(stream){stopCam();return}
  try{if(!jsQR){await load('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js');jsQR=window.jsQR}
@@ -100,13 +171,13 @@ function tick(){if(!scanning)return;const v=$('#cam');if(v.videoWidth){const w=M
   const r=jsQR(cx.getImageData(0,0,w,h).data,w,h);if(r&&/^TZ-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(r.data.trim())){navigator.vibrate&&navigator.vibrate(60);stopCam();$('#codeIn').value=r.data.trim();check();return}}
  requestAnimationFrame(tick)}
 
-/* Kiểm tra và xác nhận mã */
+/* ---------- Kiểm tra và xác nhận mã ---------- */
 $('#checkBtn').addEventListener('click',check);$('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')check()});
 async function check(){const code=$('#codeIn').value.trim().toUpperCase();if(!code)return;cur=null;$('#result').hidden=false;$('#rState').textContent='Đang kiểm tra…';$('#rState').className='state';$('#rInfo').innerHTML='';$('#useBtn').disabled=true;
  let d=null;try{const s=await db.collection('codes').doc(code).get();d=s.exists?s.data():null}catch(e){}
  if(!d){$('#rState').textContent='Không tìm thấy mã';$('#rState').className='state bad';return}
  const now=Date.now(),exp=d.exp<now,minK=Math.round((d.minOrder||0)/1000);
- $('#rInfo').innerHTML=`<dt>Quà</dt><dd>${esc(d.item)}</dd><dt>Khách</dt><dd>${esc(d.name||'Không tên')}${d.phone?' · '+esc(d.phone):''}</dd><dt>Hạn</dt><dd>${new Date(d.exp).toLocaleDateString('vi-VN')}</dd>`+(d.kind==='topping'?`<dt>Đơn tối thiểu</dt><dd>${minK}.000đ</dd>`:'')+(d.used?`<dt>Đã dùng</dt><dd>${new Date(d.usedAt).toLocaleString('vi-VN')}</dd>`:'');
+ $('#rInfo').innerHTML=`<dt>Quà</dt><dd>${esc(d.item)}</dd><dt>Khách</dt><dd>${esc(d.name||'Không tên')}</dd><dt>Hạn</dt><dd>${new Date(d.exp).toLocaleDateString('vi-VN')}</dd>`+(d.kind==='topping'?`<dt>Đơn tối thiểu</dt><dd>${minK}.000đ</dd>`:'')+(d.used?`<dt>Đã dùng</dt><dd>${new Date(d.usedAt).toLocaleString('vi-VN')}</dd>`:'');
  if(d.used){$('#rState').textContent='ĐÃ DÙNG RỒI';$('#rState').className='state bad';return}
  if(exp){$('#rState').textContent='HẾT HẠN';$('#rState').className='state bad';return}
  $('#rState').textContent='HỢP LỆ';$('#rState').className='state ok';cur={code,d,minK};
@@ -118,30 +189,73 @@ $('#useBtn').addEventListener('click',async()=>{if(!cur)return;$('#useBtn').disa
   $('#rState').textContent='ĐÃ XÁC NHẬN';navigator.vibrate&&navigator.vibrate([40,40,40]);cur=null;$('#codeIn').value='';loadToday()}
  catch(e){$('#rState').textContent='Chưa lưu được, thử lại';$('#rState').className='state bad';$('#useBtn').disabled=false}});
 
-/* Khách tại quầy: tìm theo nickname (cùng cách băm như trong game) */
+/* ---------- Thẻ tài khoản (dùng chung cho Quầy và Quản lý) ---------- */
 const nickNorm=v=>String(v||'').normalize('NFC').trim().replace(/\s+/g,' ').toLowerCase();
 async function nickKey(v){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(nickNorm(v)));return 'n'+[...new Uint8Array(d)].slice(0,20).map(x=>x.toString(16).padStart(2,'0')).join('')}
-let guest=null;
-const mm=ms=>{const t=Math.max(0,Math.ceil(ms/1000));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
-async function findGuest(){const raw=$('#nickIn').value;if(nickNorm(raw).length<2)return;guest=null;$('#gAct').hidden=true;$('#gInfo').innerHTML='<dt>Đang tìm…</dt><dd></dd>';
- try{const q=await db.collection('users').where('nick','==',await nickKey(raw)).limit(1).get();
-  if(q.empty){$('#gInfo').innerHTML='<dt>Không thấy</dt><dd>Khách cần đặt PIN trong game để có tài khoản.</dd>';return}
-  const doc=q.docs[0],d=doc.data();guest={id:doc.id,d};const inf=(d.infectedUntil||0)>Date.now();
-  $('#gInfo').innerHTML=`<dt>Khách</dt><dd>${esc((d.profile&&d.profile.name)||d.name||'')}</dd><dt>TZ</dt><dd>${(d.tz||0).toLocaleString('vi-VN')}</dd><dt>Flash</dt><dd>${d.flash??'?'}/12</dd><dt>Nhiễm độc</dt><dd>${inf?'còn '+mm(d.infectedUntil-Date.now()):'không'}</dd>`;
-  $('#gAct').hidden=false;$('#gCure').disabled=!inf}
- catch(e){$('#gInfo').innerHTML='<dt>Lỗi</dt><dd>Chưa tìm được, thử lại.</dd>'}}
-async function grant(field,label){if(!guest)return;try{await db.collection('users').doc(guest.id).update({[field]:Date.now(),grantBy:user.email});navigator.vibrate&&navigator.vibrate(40);
-  $('#gInfo').innerHTML+=`<dt>Xong</dt><dd>${label}. Game của khách tự cập nhật.</dd>`;$('#gAct').hidden=true}
- catch(e){$('#gInfo').innerHTML+='<dt>Lỗi</dt><dd>Chưa lưu được, thử lại.</dd>'}}
-$('#findBtn').addEventListener('click',findGuest);$('#nickIn').addEventListener('keydown',e=>{if(e.key==='Enter')findGuest()});
-$('#gRefill').addEventListener('click',()=>grant('grantRefill','Đã nạp đầy flash'));$('#gCure').addEventListener('click',()=>grant('grantCure','Đã giải độc'));
+const nameOf=d=>(d.profile&&d.profile.name)||d.name||'Không tên';
+const curedOf=d=>Object.values(d.cured||{}).reduce((a,b)=>a+b,0);
+function card(box,id,d,full){const inf=(d.infectedUntil||0)>Date.now();
+ box.innerHTML=`<dl><dt>Khách</dt><dd>${esc(nameOf(d))}${d.locked?'<span class="tag">Đang khoá</span>':''}${d.guest?'<span class="tag g">Chơi thử</span>':''}</dd>
+ <dt>TZ</dt><dd>${vn(d.tz)}</dd><dt>Flash</dt><dd>${d.flash??'?'}/12</dd><dt>Nhiễm độc</dt><dd>${inf?'còn '+mm(d.infectedUntil-Date.now()):'không'}</dd>
+ ${full?`<dt>Chữa được</dt><dd>${vn(curedOf(d))} zombie · ${vn((d.hunts||[]).length)} lượt dò · bị cắn ${vn(d.bites)}</dd><dt>Frame</dt><dd>${Object.keys(d.frames||{}).length}</dd><dt>Tạo lúc</dt><dd>${d.createdAt?new Date(d.createdAt).toLocaleString('vi-VN'):'—'}</dd><dt>Chơi gần nhất</dt><dd>${ago(d.updatedAt)}</dd>`:''}</dl>
+ <div class="row"><button type="button" data-g="grantRefill">Nạp đầy flash</button><button type="button" class="red" data-g="grantCure"${inf?'':' disabled'}>Giải độc</button></div>
+ ${full?`<div class="row"><input class="num" type="number" inputmode="numeric" placeholder="Số TZ" data-amt><button type="button" data-tz="1" style="flex:0 0 auto">Cộng</button><button type="button" data-tz="-1" style="flex:0 0 auto">Trừ</button></div>
+ <button type="button" data-lock="${d.locked?'0':'1'}"${d.locked?'':' class="red"'}>${d.locked?'Mở khoá tài khoản':'Khoá tài khoản'}</button>
+ <div class="list" data-codes><p class="muted">Đang tải mã đổi quà…</p></div>`:''}
+ <p class="msg" data-msg></p>`;
+ const msg=t=>{box.querySelector('[data-msg]').textContent=t};
+ const upd=async(obj,ok)=>{try{await db.collection('users').doc(id).update({...obj,grantBy:user.email});Object.assign(d,obj);navigator.vibrate&&navigator.vibrate(40);msg(ok+' Game của khách tự cập nhật.')}catch(e){msg('Chưa lưu được ('+(e.code||'lỗi')+').')}};
+ box.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click',()=>{b.disabled=true;upd({[b.dataset.g]:Date.now()},b.dataset.g==='grantRefill'?'Đã nạp đầy flash.':'Đã giải độc.')}));
+ if(!full)return;
+ box.querySelectorAll('[data-tz]').forEach(b=>b.addEventListener('click',()=>{const n=Math.abs(parseInt(box.querySelector('[data-amt]').value,10)||0);if(!n)return msg('Nhập số TZ trước.');const a=n*(+b.dataset.tz);upd({grantTzAt:Date.now(),grantTzAmt:a},(a>0?'Đã cộng ':'Đã trừ ')+vn(Math.abs(a))+' TZ.')}));
+ box.querySelector('[data-lock]').addEventListener('click',async e=>{const lk=e.currentTarget.dataset.lock==='1';await upd({locked:lk},'');card(box,id,d,true);renderList();box.querySelector('[data-msg]').textContent=lk?'Đã khoá. Khách không dò zombie và không lưu được dữ liệu cho tới khi mở khoá.':'Đã mở khoá.'});
+ db.collection('codes').where('uid','==',id).limit(30).get().then(q=>{const rows=[];q.forEach(x=>{const c=x.data();rows.push([c.createdAt||0,`<div><span>${esc(c.item)}</span><span>${c.used?'đã dùng':c.exp<Date.now()?'hết hạn':'chưa dùng'}</span></div>`])});
+  rows.sort((a,b)=>b[0]-a[0]);box.querySelector('[data-codes]').innerHTML=rows.length?'<p class="muted">Mã đổi quà</p>'+rows.map(r=>r[1]).join(''):'<p class="muted">Chưa đổi quà lần nào.</p>'}).catch(()=>{box.querySelector('[data-codes]').innerHTML=''})}
 
-async function loadToday(){const start=new Date();start.setHours(0,0,0,0);
- try{const q=await db.collection('codes').where('usedAt','>=',start.getTime()).orderBy('usedAt','desc').limit(100).get();
+async function findGuest(){const raw=$('#nickIn').value,box=$('#gCard');if(nickNorm(raw).length<2)return;box.innerHTML='<p class="muted">Đang tìm…</p>';
+ try{const q=await db.collection('users').where('nick','==',await nickKey(raw)).limit(1).get();
+  if(q.empty){box.innerHTML='<p class="muted">Không thấy nickname này. Khách cần đặt PIN trong game để có tài khoản.</p>';return}
+  card(box,q.docs[0].id,q.docs[0].data(),admin)}
+ catch(e){box.innerHTML='<p class="muted">Chưa tìm được, thử lại.</p>'}}
+$('#findBtn').addEventListener('click',findGuest);$('#nickIn').addEventListener('keydown',e=>{if(e.key==='Enter')findGuest()});
+
+async function loadToday(){
+ try{const q=await db.collection('codes').where('usedAt','>=',dayStart()).orderBy('usedAt','desc').limit(100).get();
   let top=0,fr=0,sum=0;const rows=[];q.forEach(doc=>{const d=doc.data();if(d.kind==='topping'){top++;sum+=d.orderK||0}else fr++;rows.push(`<div><span>${new Date(d.usedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})} · ${esc(d.item)}</span><span>${esc(d.name||'')}</span></div>`)});
   $('#kTop').textContent=top;$('#kFrame').textContent=fr;$('#kSum').textContent=sum;$('#todayList').innerHTML=rows.join('')||'<p class="muted">Chưa có mã nào hôm nay.</p>'}
  catch(e){$('#todayList').innerHTML='<p class="muted">Chưa tải được danh sách hôm nay.</p>'}}
-init();
+
+/* ---------- Quản lý ---------- */
+async function loadAdmin(){$('#ov').innerHTML='<p class="muted">Đang tải…</p>';
+ try{const [uq,cq,gs]=await Promise.all([db.collection('users').limit(3000).get(),db.collection('codes').where('createdAt','>=',dayStart()).limit(500).get(),db.collection('config').doc('game').get()]);
+  USERS=[];uq.forEach(x=>USERS.push({id:x.id,d:x.data()}));
+  const t0=dayStart(),w0=t0-6*864e5,reg=USERS.filter(u=>u.d.nick&&!u.d.guest),guests=USERS.filter(u=>!u.d.nick||u.d.guest);
+  const k=(v,l)=>`<div><b>${v}</b><span>${l}</span></div>`;
+  let usedToday=0;cq.forEach(x=>{if(x.data().used)usedToday++});
+  const tz=reg.reduce((a,u)=>a+(u.d.tz||0),0);
+  $('#ov').innerHTML=k(vn(reg.length),'tài khoản đăng ký')+k(vn(reg.filter(u=>(u.d.createdAt||0)>=t0).length),'đăng ký hôm nay')+k(vn(reg.filter(u=>(u.d.createdAt||0)>=w0).length),'đăng ký 7 ngày')+k(vn(USERS.filter(u=>(u.d.updatedAt||0)>=t0).length),'người chơi hôm nay')
+   +k(vn(guests.length),'chơi thử chưa đặt PIN')+k(vn(reg.reduce((a,u)=>a+curedOf(u.d),0)),'zombie đã chữa')+k(vn(cq.size),'mã phát hôm nay')+k(vn(tz),'TZ khách đang giữ');
+  $('#ovNote').textContent=`TZ khách đang giữ ứng với khoảng ${vn(tz*10)}đ giá bán topping nếu đổi hết. ${reg.filter(u=>u.d.locked).length} tài khoản đang khoá.`;
+  const g=gs.exists?gs.data():{};$('#gQuick').value=g.pQuick??30;$('#gMid').value=g.pMid??50;$('#gCap').value=g.cap??45;$('#gTop').value=g.topDay??1;$('#gFirst').checked=g.firstFast??true;$('#gSeason').value=g.season||'halloween';
+  $('#stEmails').value=staffCfg.emails.join('\n');$('#stAdmins').value=staffCfg.admins.join('\n');
+  renderList()}
+ catch(e){$('#ov').innerHTML=`<p class="muted">Chưa tải được (${esc(e.code||'lỗi')}). Kiểm tra luật Firestore đã cập nhật chưa.</p>`}}
+function renderList(){const q=nickNorm($('#accQ').value),all=$('#accGuest').checked,s=$('#accSort').value;
+ let L=USERS.filter(u=>(all||(u.d.nick&&!u.d.guest))&&(!q||nickNorm(nameOf(u.d)).includes(q)));
+ const key={act:u=>u.d.updatedAt||0,new:u=>u.d.createdAt||0,tz:u=>u.d.tz||0,cure:u=>curedOf(u.d)}[s];L.sort((a,b)=>key(b)-key(a));
+ $('#accList').innerHTML=L.slice(0,200).map(u=>`<button type="button" data-id="${u.id}"><span>${esc(nameOf(u.d))}${u.d.locked?'<span class="tag">khoá</span>':''}${u.d.guest||!u.d.nick?'<span class="tag g">thử</span>':''}<small>${ago(u.d.updatedAt)} · chữa ${vn(curedOf(u.d))}</small></span><span>${vn(u.d.tz)} TZ</span></button>`).join('')||'<p class="muted">Chưa có tài khoản nào.</p>';
+ if(L.length>200)$('#accList').insertAdjacentHTML('beforeend',`<p class="muted">Đang hiện 200/${L.length}. Gõ tên để lọc.</p>`)}
+$('#accQ').addEventListener('input',renderList);$('#accSort').addEventListener('change',renderList);$('#accGuest').addEventListener('change',renderList);
+$('#accList').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(!b)return;const u=USERS.find(x=>x.id===b.dataset.id);if(u){card($('#aCard'),u.id,u.d,true);$('#aCard').scrollIntoView({behavior:'smooth',block:'start'})}});
+$('#reload').addEventListener('click',loadAdmin);
+$('#gSave').addEventListener('click',async()=>{const n=(id,a,b)=>Math.min(b,Math.max(a,parseInt($(id).value,10)||0));let pQ=n('#gQuick',0,100),pM=n('#gMid',0,100);if(pQ+pM>100)pM=100-pQ;
+ try{await db.collection('config').doc('game').set({pQuick:pQ,pMid:pM,cap:n('#gCap',26,120),topDay:n('#gTop',1,10),firstFast:$('#gFirst').checked,season:$('#gSeason').value,updatedAt:Date.now(),updatedBy:user.email});$('#gMsg').textContent='Đã lưu. Phần còn lại '+(100-pQ-pM)+'% là nhóm dò lâu.'}
+ catch(e){$('#gMsg').textContent='Chưa lưu được ('+(e.code||'lỗi')+').'}});
+$('#stSave').addEventListener('click',async()=>{const parse=v=>[...new Set(v.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))];
+ const emails=parse($('#stEmails').value),admins=parse($('#stAdmins').value),me=(user.email||'').toLowerCase();if(!admins.includes(me))admins.push(me);
+ try{await db.collection('config').doc('staff').set({emails,admins},{merge:true});staffCfg={emails,admins};$('#stEmails').value=emails.join('\n');$('#stAdmins').value=admins.join('\n');$('#stMsg').textContent='Đã lưu. Email của bạn luôn giữ quyền quản lý.'}
+ catch(e){$('#stMsg').textContent='Chưa lưu được ('+(e.code||'lỗi')+').'}});
+init().catch(()=>{$('#loginMsg').textContent='Chưa kết nối được máy chủ. Kiểm tra mạng rồi tải lại trang.'});
 })();
 </script>
 </body></html>
