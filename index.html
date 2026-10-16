@@ -152,7 +152,20 @@ h2,h3{margin:0;text-wrap:balance}
 .dist b{font-size:17px;color:var(--fg)}
 .dbar{height:8px;border-radius:4px;background:rgba(246,250,255,.12);overflow:hidden}.dbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7fd18b,#ffb547 55%,#ff4d4d)}
 .who-img{display:flex;justify-content:center;margin:-8px 0 -10px}
-.shoot{align-self:center;width:84px!important;height:84px;border-radius:50%;border:4px solid var(--flash);background:radial-gradient(circle,var(--flash) 0 52%,transparent 54%);box-shadow:0 0 0 6px rgba(246,250,255,.12);margin:0 auto}
+.me{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left;width:100%}
+.me img{flex:none;width:58px;height:58px;border-radius:50%;background:var(--panel-2);border:2px solid var(--line)}
+.me b{display:block;font-size:17px}.me small{color:var(--muted);font-size:13px}
+.me.inf{border-color:var(--danger);background:#2a1416}.me.inf img{border-color:var(--danger)}.me.inf small{color:#ffb0a8}
+.infbox{border:2px solid var(--danger);border-radius:14px;padding:14px;background:#1f1012;display:flex;flex-direction:column;gap:8px}
+.infbox h3{font-family:var(--display);font-size:18px;font-weight:400;color:#ff8a80}.infbox ul{margin:0;padding-left:18px;color:#f3c9c4;font-size:14px}
+.avgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:100%}
+.avgrid button{border:2px solid var(--line);border-radius:12px;padding:2px;background:var(--panel-2)}.avgrid button[aria-pressed="true"]{border-color:var(--sodium);box-shadow:0 0 0 2px var(--sodium)}
+.avgrid img{display:block;width:100%;height:auto}
+.field{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);font:inherit;font-size:16px}
+#hudAv{width:30px;height:30px;border-radius:50%;background:#1a2333;border:2px solid rgba(246,250,255,.4);margin-top:-6px}
+#infChip{color:#ff8a80;font-weight:700}
+.shoot.lock{border-color:#cde86b;box-shadow:0 0 0 6px rgba(205,232,107,.35),0 0 28px rgba(205,232,107,.7)}
+.shoot{touch-action:none;align-self:center;width:96px!important;height:96px;border-radius:50%;border:4px solid var(--flash);background:radial-gradient(circle,var(--flash) 0 52%,transparent 54%);box-shadow:0 0 0 6px rgba(246,250,255,.12);margin:0 auto}
 .shoot:active{transform:scale(.94)}
 .aimrow{display:flex;justify-content:space-between;align-items:center;font-family:var(--hud);font-size:13px;letter-spacing:.06em}
 .hp{display:flex;gap:4px}
@@ -192,7 +205,7 @@ h2,h3{margin:0;text-wrap:balance}
   <canvas id="cv"></canvas>
   <div class="vf" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="hud-top"><span class="rec" id="recLbl">REC · ĐÊM</span><button class="x" id="quit" type="button">Thoát</button></div>
-  <div class="hud-sub"><span id="hudFlash">FLASH 12/12</span><span id="hudTz">TZ 0</span></div>
+  <div class="hud-sub"><img id="hudAv" alt=""><span id="hudFlash">FLASH 12/12</span><span id="hudTz">TZ 0</span><span id="infChip" hidden>NHIỄM ĐỘC</span></div>
   <div class="bubble" id="bubble" hidden></div>
   <div class="flashfx" id="flashfx"></div>
   <div class="hud-bot" id="hudScan">
@@ -268,10 +281,15 @@ const FLASH_MAX=12, REGEN_MS=5*60*1000;
 /* ---------- Trạng thái (lưu trên máy người chơi) ---------- */
 const KEY='zonez.v1';
 const DEF={tz:0,flash:FLASH_MAX,flashAt:Date.now(),frames:{},sinceFrame:0,codes:[],seen:{},cured:{},hunts:[],
- cfg:{pQuick:30,pMid:50,cap:45,firstFast:true,topDay:1},season:'halloween',lastHuntDay:'',topLog:{},mute:false};
+ cfg:{pQuick:30,pMid:50,cap:45,firstFast:true,topDay:1},season:'halloween',lastHuntDay:'',topLog:{},mute:false,profile:null,infectedUntil:0,bites:0};
 let S;
 try{const raw=JSON.parse(localStorage.getItem(KEY)||'{}');S=Object.assign(JSON.parse(JSON.stringify(DEF)),raw);S.cfg=Object.assign({},DEF.cfg,raw.cfg||{})}catch(e){S=JSON.parse(JSON.stringify(DEF))}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const INFECT_MS=30*60*1000;
+const infected=()=>S.infectedUntil>Date.now();
+const AVATARS=['trasua','songao','shipper','deadline','ngugat','onthi','doidem','ceo','bingo','chambai','ongtuyet'];
+function avatarSrc(){const id=(S.profile&&S.profile.avatar)||'trasua';return infected()?SPRITES[id].z:SPRITES[id].h}
+function mmss(ms){const t=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}
 function regen(){const now=Date.now();if(S.flash>=FLASH_MAX){S.flashAt=now;return}
  const n=Math.floor((now-S.flashAt)/REGEN_MS);if(n>0){S.flash=Math.min(FLASH_MAX,S.flash+n);S.flashAt+=n*REGEN_MS}}
 
@@ -300,7 +318,11 @@ function render(){regen();save();
 function pipsHTML(){let s='';for(let i=0;i<FLASH_MAX;i++)s+=`<i class="${i<S.flash?'on':''}"></i>`;return s}
 function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.lastHuntDay!==dayKey();
  const rows=allZombies().map(z=>`<div class="row"><div class="nm ti"><img src="${S.cured[z.id]?SPRITES[z.id].h:SPRITES[z.id].z}" alt="" width="48" height="48" style="${S.seen[z.id]?'':'filter:brightness(0);opacity:.45'}"><span><b>${esc(z.name)}</b><span class="tier t${z.tier}">${TIERS[z.tier].name}</span></span></div><div class="meta">${S.cured[z.id]?`chữa ${S.cured[z.id]}`:S.seen[z.id]?`gặp ${S.seen[z.id]}`:'chưa gặp'}</div></div>`).join('');
- return `<div class="top"><div><div class="wm">ZONE <span>Z</span></div><span class="by">THEZONE · bản chơi thử</span></div><button class="chip" id="mute" type="button">Âm thanh: ${S.mute?'tắt':'bật'}</button></div>
+ const inf=infected(),pf=S.profile||{name:'Đạo hữu',avatar:'trasua'};
+ return `<div class="top"><div><div class="wm">ZONE <span>Z</span></div><span class="by">THEZONE · bản test</span></div><button class="chip" id="mute" type="button">Âm thanh: ${S.mute?'tắt':'bật'}</button></div>
+ <button class="me${inf?' inf':''}" id="meBtn" type="button"><img src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>${inf?`Nhiễm độc · còn <span id="infT">${mmss(S.infectedUntil-Date.now())}</span>`:`Đã cứu ${Object.values(S.cured).reduce((a,b)=>a+b,0)} người · bấm để đổi nhân vật`}</small></span></button>
+ ${inf?`<div class="infbox"><h3>Bạn đang nhiễm độc</h3><ul><li>Nhân vật của bạn hóa zombie.</li><li>TZ nhận được khi chữa zombie giảm một nửa.</li><li>Hết sau <b id="infT2">${mmss(S.infectedUntil-Date.now())}</b>, hoặc giải độc ngay tại quầy.</li></ul>
+ <button class="btn pri" id="cureCounter" type="button">Giải độc tại quầy THEZONE (giả lập quét QR)</button><p class="note" style="margin:0">Khi có tài khoản: gửi link nhờ bạn bè chụp flash để chữa.</p></div>`:''}
  <p class="lede">Zombie tràn khắp phố. <b>THEZONE là Vùng An Toàn.</b> Không đánh, chỉ chụp: đèn flash giúp họ tỉnh lại. Zombie càng gần, flash càng mạnh, nhưng đừng để bị cắn.</p>
  <p class="note" style="margin:0">Bật camera và xoay điện thoại để tìm zombie quanh bạn. Chơi ở chỗ hơi tối sẽ ghê hơn.</p>
  <div class="season"><div class="moon" aria-hidden="true"></div><div class="eyebrow">Mùa đang mở · ${esc(se.dates)}</div><h3>${esc(se.name)}</h3><p>Boss mùa: ${esc(se.boss.name)} · 3 frame giới hạn</p></div>
@@ -340,7 +362,7 @@ function statsHTML(){const H=S.hunts;const met=H.filter(h=>h.wait!=null);const c
  <div class="tiles">
   <div class="stat"><label>Lượt dò</label><b>${H.length}</b></div>
   <div class="stat"><label>Chữa được</label><b>${cures}</b></div>
-  <div class="stat"><label>Bỏ khi dò</label><b>${ab}</b></div>
+  <div class="stat"><label>Bị cắn</label><b>${H.filter(h=>h.result==='bitten').length}</b></div>
   <div class="stat"><label>Gặp trung vị</label><b>${median(met.map(h=>h.wait)).toFixed(1)}s</b></div>
   <div class="stat"><label>TZ kiếm</label><b>${fmt(tzE)}</b></div>
   <div class="stat"><label>Frame rơi</label><b>${frD}</b></div></div>
@@ -373,6 +395,8 @@ function simHTML(r){const c=S.cfg,target=[c.pQuick,c.pMid,Math.max(0,100-c.pQuic
 
 function bind(){const on=(id,ev,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener(ev,fn)};
  on('go','click',startHunt);
+ on('meBtn','click',()=>profileSheet(false));
+ on('cureCounter','click',()=>{S.infectedUntil=0;tone(880,.12);setTimeout(()=>tone(1320,.2),110);render()});
  on('mute','click',()=>{S.mute=!S.mute;render()});
  on('refill','click',()=>{S.flash=FLASH_MAX;S.flashAt=Date.now();tone(880,.12);tone(1320,.18);render()});
  screen.querySelectorAll('[data-top]').forEach(b=>b.addEventListener('click',()=>redeem(b.dataset.top)));
@@ -399,6 +423,15 @@ function qr(cv,seed){const n=25,ctx=cv.getContext('2d');cv.width=n*8;cv.height=n
  ctx.fillStyle='#0b1019';const fin=(x,y)=>{ctx.fillRect(x*8,y*8,56,56);ctx.fillStyle='#fff';ctx.fillRect(x*8+8,y*8+8,40,40);ctx.fillStyle='#0b1019';ctx.fillRect(x*8+16,y*8+16,24,24)};
  for(let y=1;y<n-1;y++)for(let x=1;x<n-1;x++){const inF=(x<9&&y<9)||(x>n-10&&y<9)||(x<9&&y>n-10);if(!inF&&r()<.48)ctx.fillRect(x*8,y*8,8,8)}
  fin(1,1);fin(n-8,1);fin(1,n-8)}
+function profileSheet(first){const sh=$('#sheet');let pick=(S.profile&&S.profile.avatar)||'trasua';
+ const grid=()=>AVATARS.map(id=>`<button type="button" data-av="${id}" aria-pressed="${id===pick}"><img src="${SPRITES[id].h}" alt=""></button>`).join('');
+ sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Nhân vật của bạn"><h3 style="font-family:var(--display);font-weight:400;font-size:20px">${first?'Chọn nhân vật của bạn':'Đổi nhân vật'}</h3>
+ <p class="note" style="margin:0">Bị zombie cắn, nhân vật này sẽ hóa zombie.</p><div class="avgrid" id="avg">${grid()}</div>
+ <label for="pfName" class="note" style="align-self:flex-start;margin:0">Tên hiển thị</label><input class="field" id="pfName" maxlength="18" value="${esc((S.profile&&S.profile.name)||'')}" placeholder="Ví dụ: Tín Đạo Sĩ">
+ <button class="btn pri" id="pfSave" type="button" style="width:100%">${first?'Vào game':'Lưu'}</button></div>`;
+ sh.hidden=false;
+ $('#avg').addEventListener('click',e=>{const b=e.target.closest('[data-av]');if(!b)return;pick=b.dataset.av;$('#avg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.av===pick)))});
+ $('#pfSave').addEventListener('click',()=>{const nm=$('#pfName').value.trim()||'Đạo hữu';S.profile={name:nm.slice(0,18),avatar:pick};save();sh.hidden=true;render()})}
 function codeSheet(c){const sh=$('#sheet');
  sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="${esc(c.item)}">${c.slug&&ICON[c.slug]?`<img src="${ICON[c.slug]}" alt="" width="96" height="96">`:''}<h3 style="font-family:var(--display);font-weight:400;font-size:20px">${esc(c.item)}</h3><canvas id="qr" width="200" height="200"></canvas><div class="code">${c.code}</div>
  <p class="note" style="margin:0">${c.kind==='topping'?`Dùng kèm đơn từ ${MINORDER[(TOPPINGS.find(t=>t.id===c.slug)||{k:5}).k]}.000đ tại THEZONE · 1 lần`:'Đưa mã cho nhân viên khi chụp tại M BOOTH'}<br>Hạn dùng: ${new Date(c.exp).toLocaleDateString('vi-VN')}</p>
@@ -440,7 +473,12 @@ let DISP='';
 /* Góc nhìn: con quay hồi chuyển (xoay máy) hoặc vuốt ngang khi máy không có cảm biến */
 let VIEW=0,GYRO=false,RAWYAW=null,CAM=null,WAKE=null,dragX=null;const FOV=58;
 const wrapDeg=a=>((a+540)%360)-180;
-function onOri(e){if(e.alpha==null)return;GYRO=true;const a=e.alpha;if(RAWYAW==null){RAWYAW=a;VIEW=a;return}VIEW=VIEW+wrapDeg(a-VIEW)*.35}
+function headingOf(e){if(typeof e.webkitCompassHeading==='number'&&!isNaN(e.webkitCompassHeading))return e.webkitCompassHeading;
+ const r=Math.PI/180,a=(e.alpha||0)*r,b=(e.beta||0)*r,g=(e.gamma||0)*r,cA=Math.cos(a),sA=Math.sin(a),cB=Math.cos(b),sB=Math.sin(b),cG=Math.cos(g),sG=Math.sin(g);
+ return (Math.atan2(-cA*sG-sA*sB*cG,-sA*sG+cA*sB*cG)/r+360)%360}
+function onOri(e){if(e.alpha==null&&typeof e.webkitCompassHeading!=='number')return;GYRO=true;const v=-headingOf(e);if(RAWYAW==null){RAWYAW=v;VIEW=v;return}VIEW=VIEW+wrapDeg(v-VIEW)*.3}
+/* Khung ngắm: rộng tối thiểu ~8% bề ngang màn hình quanh đầu zombie; có hút tâm khi gần trúng */
+let ASSIST=0;const aimTol=g=>g.hr+Math.max(18,W*.08);const onTarget=g=>Math.abs(g.hx-W/2)<aimTol(g);
 async function startSensors(){try{if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')return}
  addEventListener('deviceorientation',onOri)}catch(e){}}
 async function startCam(){const v=$('#cam');if(CAM)return;try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw 0;
@@ -449,8 +487,8 @@ async function startCam(){const v=$('#cam');if(CAM)return;try{if(!navigator.medi
 function stopCam(){const v=$('#cam');if(CAM){CAM.getTracks().forEach(t=>t.stop());CAM=null}v.srcObject=null;v.classList.remove('on');try{WAKE&&WAKE.release()}catch(e){}WAKE=null}
 function geom(d,t){const n=1-d,base=Math.min(W*1.05,Hh*.62);
  const size=base*(.2+1.45*Math.pow(n,1.35)),feet=Hh*(.55+.31*Math.pow(n,1.6)),amp=W*(.16+.1*n);
- const zy=HS.zbase+Math.sin(t*.7+HS.ph)*(5+9*d)+Math.sin(t*1.9+HS.ph*2)*2.5+(HS.side||0);
- const cx=W/2-wrapDeg(zy-VIEW)*(W/FOV);
+ const zy=HS.zbase+Math.sin(t*.7+HS.ph)*(GYRO?2+5*d:5+9*d)+Math.sin(t*1.9+HS.ph*2)*(GYRO?1:2.5)+(HS.side||0);
+ const cx=W/2-wrapDeg(zy-VIEW-ASSIST)*(W/FOV);
  const top=feet-size*(452/512)-Math.abs(Math.sin(t*5.5))*size*.018;
  return{size,cx,top,hx:cx-size*.043,hy:top+size*.365,hr:size*.195,n}}
 function drawSprite(g,t,k,alpha){const sp=SPR[HS.z.id];if(!sp)return;ctx.save();const piv=g.top+g.size*.88;
@@ -465,7 +503,7 @@ const HS={}; // trạng thái lượt săn
 const ui={scan:$('#hudScan'),aim:$('#hudAim'),res:$('#result'),bub:$('#bubble'),heat:$('#heat'),heatLbl:$('#heatLbl'),hint:$('#hint')};
 const HINTS=['Nó vòng ra sau lưng bạn rồi, thử quay máy lại.','Zombie thích chỗ tối. Thử hướng về góc ít đèn.','Tiếng động hút zombie. Đứng yên một chút.','Thử dò chỗ khác, tín hiệu ở đây yếu.'];
 function setPhase(p){HS.phase=p;ui.scan.hidden=p!=='scan';ui.aim.hidden=p!=='aim';ui.res.hidden=p!=='result';if(p!=='aim'&&p!=='cure')ui.bub.hidden=true}
-function hudTop(){$('#hudFlash').textContent=`FLASH ${S.flash}/${FLASH_MAX}`;$('#hudTz').textContent=`TZ ${fmt(S.tz)}`}
+function hudTop(){$('#hudFlash').textContent=`FLASH ${S.flash}/${FLASH_MAX}`;$('#hudTz').textContent=`TZ ${fmt(S.tz)}`;$('#hudAv').src=avatarSrc();$('#infChip').hidden=!infected()}
 const thump=()=>{tone(58,.13,'sine',.22);setTimeout(()=>tone(50,.11,'sine',.16),130)};
 let raf=0,lastT=0;
 function startHunt(){ac();regen();resize();startSensors();startCam();try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>WAKE=w).catch(()=>{})}catch(e){}DISP=getComputedStyle(document.documentElement).getPropertyValue('--display');const now=performance.now();
@@ -476,7 +514,7 @@ function startHunt(){ac();regen();resize();startSensors();startCam();try{navigat
 function elapsedScan(now){return (now-HS.rollStart)/1000}
 function reroll(){if(HS.phase!=='scan')return;const now=performance.now();HS.cumBefore+=elapsedScan(now);HS.rollStart=now;HS.rerolls++;
  HS.T=Math.max(1.2,Math.min(sampleWait(S.cfg),S.cfg.cap-HS.cumBefore));seed=ri(1,1e9);if(!photoImg)bgCanvas=null;ui.hint.textContent='Đổi chỗ dò… tín hiệu mới.';tone(520,.08,'triangle')}
-function spawn(now){const wait=HS.cumBefore+HS.T;HS.wait=wait;HS.tier=rollTier(wait);HS.z=pickZombie(HS.tier);const T=TIERS[HS.tier];
+function spawn(now){ASSIST=0;const wait=HS.cumBefore+HS.T;HS.wait=wait;HS.tier=rollTier(wait);HS.z=pickZombie(HS.tier);const T=TIERS[HS.tier];
  Object.assign(HS,{hp:T.hp,perfects:0,d:1,ph:rnd(0,6.28),zbase:VIEW+(Math.random()<.5?-1:1)*rnd(GYRO?14:8,GYRO?40:22),side:0,mode:'walk',modeUntil:now+800,appearAt:now,cdUntil:now+500,lastHb:0,growlAt:now+rnd(2000,3500),uiAt:0,flashAt:0});
  S.seen[HS.z.id]=(S.seen[HS.z.id]||0)+1;save();groan();buzz([60,40,60]);
  ui.bub.innerHTML=`<small style="color:${T.col}">${T.name}</small>${esc(HS.z.line)}`;ui.bub.hidden=false;
@@ -484,11 +522,11 @@ function spawn(now){const wait=HS.cumBefore+HS.T;HS.wait=wait;HS.tier=rollTier(w
 function drawHp(){const T=TIERS[HS.tier];let s='';for(let i=0;i<T.hp;i++)s+=`<i class="${i<HS.hp?'':'off'}"></i>`;$('#hp').innerHTML=s}
 function pop(text,color){HS.pops.push({text,color,at:performance.now()})}
 function surge(now){HS.mode='lunge';HS.modeUntil=now+340;groan();buzz(90)}
-function shoot(){if(HS.phase!=='aim')return;const now=performance.now();if(now<HS.cdUntil)return;
+function shoot(){if(HS.phase!=='aim')return;const now=performance.now();if(now<HS.cdUntil){buzz(8);return}buzz(25);
  if(S.flash<=0){$('#aimHint').textContent='Hết flash. Về Vùng An Toàn nạp tại quầy.';tone(200,.2,'square',.04);return}
  S.flash--;save();hudTop();const fx=$('#flashfx');fx.classList.remove('go');void fx.offsetWidth;fx.classList.add('go');shutter();HS.cdUntil=now+650;HS.flashAt=now;
  const g=HS.g;if(!g)return;
- if(Math.abs(g.hx-W/2)>g.hr+10){pop('Lệch khung!','#ff6767');surge(now);return}
+ if(!onTarget(g)){pop('Lệch khung!','#ff6767');surge(now);return}
  const p=chanceAt(HS.d,HS.tier);
  if(Math.random()<p){HS.hp--;drawHp();const close=HS.d<.25;if(close)HS.perfects++;buzz(40);pop(close?'CẬN MẶT!':'TRÚNG!',close?'#ffd36b':'#f6faff');
   if(HS.hp<=0){HS.cureAt=now;HS.gFreeze=g;setPhase('cure');tone(660,.15);setTimeout(()=>tone(990,.25),120);ui.bub.innerHTML=esc(HS.z.thanks);ui.bub.hidden=false;
@@ -500,13 +538,14 @@ function finish(result){if(HS.done)return;HS.done=true;const rec={wait:HS.wait==
  if(result==='cure'){const T=TIERS[HS.tier];const bonus=.1*HS.perfects;let base=ri(T.tz[0],T.tz[1]),tz=Math.round(base*(1+bonus));const items=[];let f=null,pity=false,dup=false;
   if(HS.tier===5)f=CEO_FRAME;else if(S.sinceFrame>=29||Math.random()<T.frame){pity=S.sinceFrame>=29;const fs=SEASONS[S.season].frames,fresh=fs.filter(x=>!S.frames[x.id]),pool=fresh.length?fresh:fs;f=pool[ri(0,pool.length-1)]}
   if(f){if(S.frames[f.id]){dup=true;items.push(`<div><span>Frame ${esc(f.name)} (trùng)</span><b>+50 TZ</b></div>`)}else{S.frames[f.id]={at:Date.now()};items.push(`<div class="rare"><span>Frame mới: ${esc(f.name)}${pity?' · bảo hiểm':''}</span><b>M BOOTH</b></div>`)}S.sinceFrame=0;rec.frame=f.id}else S.sinceFrame++;
-  const total=tz+(dup?50:0);S.tz+=total;rec.tz=total;S.cured[HS.z.id]=(S.cured[HS.z.id]||0)+1;
+  const sick=infected();if(sick)tz=Math.round(tz*.5);const total=tz+(dup?50:0);S.tz+=total;rec.tz=total;S.cured[HS.z.id]=(S.cured[HS.z.id]||0)+1;
   html=`<div class="who-img"><img src="${SPRITES[HS.z.id].h}" alt="" width="120" height="120"></div><h3>Đã cứu 1 người</h3><p class="who">${esc(HS.z.name)} · ${T.name} · gặp sau ${HS.wait.toFixed(1)} giây${HS.perfects?` · ${HS.perfects} cú cận mặt`:''}</p>
-   <div class="loot"><div><span>TZ đồng${HS.perfects?` (+${Math.round(bonus*100)}% can đảm)`:''}</span><b>+${fmt(tz)}</b></div>${items.join('')}</div>
+   <div class="loot"><div><span>TZ đồng${HS.perfects?` (+${Math.round(bonus*100)}% can đảm)`:''}${sick?' · nhiễm độc −50%':''}</span><b>+${fmt(tz)}</b></div>${items.join('')}</div>
    <p class="note" style="margin:0">${f?'':`Frame: chưa rơi. Còn ${30-S.sinceFrame} lần chữa nữa là chắc chắn có.`}</p>`}
- else if(result==='bitten'){const lost=Math.min(2,S.flash);S.flash-=lost;
-  html=`<div class="who-img"><img src="${SPRITES[HS.z.id].z}" alt="" width="120" height="120"></div><h3>Bạn bị cắn!</h3><p class="who">${esc(HS.z.name)} áp sát trước khi bạn kịp chụp. Mất ${lost} flash.</p>
-   <p class="note" style="margin:0">Bản chính: bạn hóa zombie 30 phút, gửi link nhờ bạn bè chụp flash để chữa.</p>`}
+ else if(result==='bitten'){const lost=Math.min(2,S.flash);S.flash-=lost;S.infectedUntil=Math.max(S.infectedUntil,Date.now())+INFECT_MS;S.bites=(S.bites||0)+1;
+  html=`<div class="who-img"><img src="${avatarSrc()}" alt="" width="120" height="120"></div><h3>Bạn bị cắn!</h3><p class="who">${esc(HS.z.name)} áp sát trước khi bạn kịp chụp.</p>
+   <div class="loot"><div><span>Flash</span><b>−${lost}</b></div><div class="rare"><span>Nhiễm độc 30 phút: nhân vật hóa zombie, TZ giảm một nửa</span></div></div>
+   <p class="note" style="margin:0">Giải độc ngay tại quầy THEZONE, hoặc chờ hết giờ. Khi có tài khoản: nhờ bạn bè chụp flash để chữa.</p>`}
  S.hunts.push(rec);if(S.hunts.length>300)S.hunts.shift();save();
  if(result==='abandon')return;
  ui.res.innerHTML=html+`<div class="hrow"><button class="btn" id="rHome" type="button">Về Vùng An Toàn</button><button class="btn pri" id="rAgain" type="button">Dò tiếp</button></div>`;
@@ -514,16 +553,18 @@ function finish(result){if(HS.done)return;HS.done=true;const rec={wait:HS.wait==
 function closeHunt(){if(!HS.done&&HS.phase!=='result')finish('abandon');cancelAnimationFrame(raf);stopCam();$('#hunt').hidden=true;render()}
 $('#quit').addEventListener('click',closeHunt);
 $('#reroll').addEventListener('click',reroll);
-$('#shoot').addEventListener('click',shoot);
-cv.addEventListener('pointerdown',e=>{if(GYRO){if(HS.phase==='aim')shoot();return}dragX=e.clientX;cv.setPointerCapture&&cv.setPointerCapture(e.pointerId)});
+$('#shoot').addEventListener('pointerdown',e=>{e.preventDefault();shoot()});
+$('#shoot').addEventListener('click',e=>{if(e.detail===0)shoot()});
+let tapX=0,tapT=0;
+cv.addEventListener('pointerdown',e=>{if(GYRO){if(HS.phase==='aim')shoot();return}dragX=e.clientX;tapX=e.clientX;tapT=performance.now();cv.setPointerCapture&&cv.setPointerCapture(e.pointerId)});
 cv.addEventListener('pointermove',e=>{if(GYRO||dragX==null)return;VIEW+=(e.clientX-dragX)/(W/FOV);dragX=e.clientX});
-cv.addEventListener('pointerup',()=>{dragX=null});cv.addEventListener('pointercancel',()=>{dragX=null});
+cv.addEventListener('pointerup',e=>{if(!GYRO&&dragX!=null&&Math.abs(e.clientX-tapX)<10&&performance.now()-tapT<300&&HS.phase==='aim')shoot();dragX=null});cv.addEventListener('pointercancel',()=>{dragX=null});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&!$('#hunt').hidden)closeHunt()});
 $('#photo').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{photoImg=im;bgCanvas=null;$('#photoLbl').firstChild.textContent='Đang dùng ảnh của bạn'};im.src=rd.result};rd.readAsDataURL(f)});
 
 function updateApproach(now,dt){
  if(now>HS.modeUntil){const r=Math.random(),lungeP=.12+.3*(1-HS.d);
-  if(r<lungeP){HS.mode='lunge';HS.modeUntil=now+rnd(250,400);HS.side=clamp((HS.side||0)+rnd(-6,6),-12,12);if(HS.d<.6)groan()}
+  if(r<lungeP){HS.mode='lunge';HS.modeUntil=now+rnd(250,400);HS.side=clamp((HS.side||0)+rnd(-4,4),-8,8);if(HS.d<.6)groan()}
   else if(r<lungeP+.25){HS.mode='pause';HS.modeUntil=now+rnd(350,850)}
   else{HS.mode='walk';HS.modeUntil=now+rnd(700,1500)}}
  const mult=HS.mode==='lunge'?4:HS.mode==='pause'?.12:1;
@@ -555,8 +596,11 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
   drawSprite(g,t,k,alpha);
   if(ph==='aim'){
    if(now-HS.appearAt>2200)ui.bub.hidden=true;
-   const on=Math.abs(g.hx-W/2)<g.hr+10,R=Math.max(26,g.hr+10),p=chanceAt(HS.d,HS.tier),rx=W/2,ry=g.hy;
-   ctx.strokeStyle=on?'#f6faff':'rgba(246,250,255,.45)';ctx.lineWidth=on?4:2;ctx.beginPath();ctx.arc(rx,ry,R,0,7);ctx.stroke();
+   const on=onTarget(g),R=Math.max(26,aimTol(g)),p=chanceAt(HS.d,HS.tier),rx=W/2,ry=g.hy;
+   {const gp=W/2-g.hx;if(Math.abs(gp)<aimTol(g)*2.2)ASSIST=clamp(ASSIST+gp/(W/FOV)*.12,-8,8);else ASSIST*=.92}
+   $('#shoot').classList.toggle('lock',on);
+   if(on){ctx.font=`16px ${DISP}`;ctx.textAlign='center';ctx.fillStyle='#cde86b';ctx.fillText('KHÓA',rx,ry-R*1.5-10)}
+   ctx.strokeStyle=on?'#cde86b':'rgba(246,250,255,.45)';ctx.lineWidth=on?4:2;ctx.beginPath();ctx.arc(rx,ry,R,0,7);ctx.stroke();
    for(const a of[0,Math.PI/2,Math.PI,Math.PI*1.5]){ctx.beginPath();ctx.moveTo(rx+Math.cos(a)*R*1.15,ry+Math.sin(a)*R*1.15);ctx.lineTo(rx+Math.cos(a)*R*1.5,ry+Math.sin(a)*R*1.5);ctx.stroke()}
    if(now<HS.cdUntil){const q=1-(HS.cdUntil-now)/650;ctx.strokeStyle='#ffb547';ctx.lineWidth=3;ctx.beginPath();ctx.arc(rx,ry,R+8,-Math.PI/2,-Math.PI/2+q*6.283);ctx.stroke()}
    ctx.font=`18px ${DISP}`;ctx.textAlign='center';ctx.fillStyle=p<.35?'#ff6767':p<.7?'#ffb547':'#7fd18b';ctx.fillText(`${Math.round(p*100)}%`,rx,ry+R*1.5+24);
@@ -569,15 +613,18 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
     const off=g.hx<0?'left':g.hx>W?'right':null;$('#aimHint').textContent=off?(off==='left'?'Nó ở bên TRÁI! '+(GYRO?'Xoay máy sang trái':'Vuốt sang phải'):'Nó ở bên PHẢI! '+(GYRO?'Xoay máy sang phải':'Vuốt sang trái')):!on?(GYRO?'Xoay máy đưa đầu nó vào khung tròn':'Vuốt ngang đưa đầu nó vào khung tròn'):HS.d>.66?'Còn xa, flash yếu. Chờ thêm hay chụp liều?':HS.d>.3?'Vừa tầm. Chụp đi!':'SÁT MẶT RỒI! Chụp ngay!'}}
   if(ph==='cure'){const p=(now-HS.cureAt)/1000;for(const q of HS.parts){ctx.fillStyle=q.c;ctx.globalAlpha=clamp(1-p/1.6,0,1);ctx.beginPath();ctx.arc(g.hx+Math.cos(q.a)*q.v*p,g.hy+Math.sin(q.a)*q.v*p,3,0,7);ctx.fill()}ctx.globalAlpha=1;if(p>=1.8)finish('cure')}
   if(ph==='bite'&&now-HS.biteAt>1300)finish('bitten');
-  for(const q of HS.pops){const p=(now-q.at)/900;if(p>1)continue;ctx.globalAlpha=1-p;ctx.fillStyle=q.color;ctx.font=`22px ${DISP}`;ctx.textAlign='center';ctx.fillText(q.text,g.hx,Math.max(90,g.hy-g.hr*1.7)-p*30);ctx.globalAlpha=1}
+  for(const q of HS.pops){const p=(now-q.at)/900;if(p>1)continue;ctx.globalAlpha=1-p;ctx.fillStyle=q.color;ctx.font=`22px ${DISP}`;ctx.textAlign='center';ctx.fillText(q.text,g.hx,Math.max(110,g.hy-Math.max(26,aimTol(g))*1.5-40)-p*30);ctx.globalAlpha=1}
   HS.pops=HS.pops.filter(q=>now-q.at<900)}
  ctx.restore();
+ if(infected()&&ph!=='scan'){ctx.fillStyle='rgba(70,140,50,.12)';ctx.fillRect(0,0,W,Hh)}
  if(danger>0){const pulse=.5+.5*Math.sin(now/180);const gr=ctx.createRadialGradient(W/2,Hh/2,Math.min(W,Hh)*.22,W/2,Hh/2,Math.max(W,Hh)*.72);gr.addColorStop(0,'rgba(120,0,10,0)');gr.addColorStop(1,`rgba(160,0,18,${(.18+.5*danger*(.6+.4*pulse)).toFixed(3)})`);ctx.fillStyle=gr;ctx.fillRect(0,0,W,Hh)}
  if(ph==='aim'&&HS.d<.22&&Math.floor(now/260)%2){ctx.font=`30px ${DISP}`;ctx.textAlign='center';ctx.fillStyle='#ff4d4d';ctx.fillText('QUÁ GẦN!',W/2,Hh*.19)}
  if(ph==='bite'){const p=clamp((now-HS.biteAt)/1300,0,1);ctx.fillStyle=`rgba(150,0,20,${(.65*(1-p)+.2).toFixed(3)})`;ctx.fillRect(0,0,W,Hh);ctx.font=`40px ${DISP}`;ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('BỊ CẮN!',W/2,Hh*.5)}
  ctx.fillStyle='rgba(255,255,255,.035)';for(let i=0;i<70;i++)ctx.fillRect(Math.random()*W,Math.random()*Hh,1.5,1.5)}
 
 render();
+if(!S.profile)profileSheet(true);
+setInterval(()=>{if(!$('#hunt').hidden||tab!=='home')return;const a=$('#infT'),b=$('#infT2');if(S.infectedUntil&&!infected()){S.infectedUntil=0;save();render();return}if(a||b){const t=mmss(S.infectedUntil-Date.now());if(a)a.textContent=t;if(b)b.textContent=t}},1000);
 setInterval(()=>{if($('#hunt').hidden&&tab==='home'){const f=S.flash;regen();if(S.flash!==f)render()}},30000);
 })();
 </script>
