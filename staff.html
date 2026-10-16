@@ -98,7 +98,7 @@ async function check(){const code=$('#codeIn').value.trim().toUpperCase();if(!co
  let d=null;try{const s=await db.collection('codes').doc(code).get();d=s.exists?s.data():null}catch(e){}
  if(!d){$('#rState').textContent='Không tìm thấy mã';$('#rState').className='state bad';return}
  const now=Date.now(),exp=d.exp<now,minK=Math.round((d.minOrder||0)/1000);
- $('#rInfo').innerHTML=`<dt>Quà</dt><dd>${esc(d.item)}</dd><dt>Khách</dt><dd>${esc(d.name||'Không tên')}</dd><dt>Hạn</dt><dd>${new Date(d.exp).toLocaleDateString('vi-VN')}</dd>`+(d.kind==='topping'?`<dt>Đơn tối thiểu</dt><dd>${minK}.000đ</dd>`:'')+(d.used?`<dt>Đã dùng</dt><dd>${new Date(d.usedAt).toLocaleString('vi-VN')}</dd>`:'');
+ $('#rInfo').innerHTML=`<dt>Quà</dt><dd>${esc(d.item)}</dd><dt>Khách</dt><dd>${esc(d.name||'Không tên')}${d.phone?' · '+esc(d.phone):''}</dd><dt>Hạn</dt><dd>${new Date(d.exp).toLocaleDateString('vi-VN')}</dd>`+(d.kind==='topping'?`<dt>Đơn tối thiểu</dt><dd>${minK}.000đ</dd>`:'')+(d.used?`<dt>Đã dùng</dt><dd>${new Date(d.usedAt).toLocaleString('vi-VN')}</dd>`:'');
  if(d.used){$('#rState').textContent='ĐÃ DÙNG RỒI';$('#rState').className='state bad';return}
  if(exp){$('#rState').textContent='HẾT HẠN';$('#rState').className='state bad';return}
  $('#rState').textContent='HỢP LỆ';$('#rState').className='state ok';cur={code,d,minK};

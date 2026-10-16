@@ -434,11 +434,13 @@ function profileSheet(first){const sh=$('#sheet');let pick=(S.profile&&S.profile
  sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="Nhân vật của bạn"><h3 style="font-family:var(--display);font-weight:400;font-size:20px">${first?'Chọn nhân vật của bạn':'Đổi nhân vật'}</h3>
  <p class="note" style="margin:0">Bị zombie cắn, nhân vật này sẽ hóa zombie.</p><div class="avgrid" id="avg">${grid()}</div>
  <label for="pfName" class="note" style="align-self:flex-start;margin:0">Tên hiển thị</label><input class="field" id="pfName" maxlength="18" value="${esc((S.profile&&S.profile.name)||'')}" placeholder="Ví dụ: Tín Đạo Sĩ">
- <button class="btn pri" id="pfSave" type="button" style="width:100%">${first?'Vào game':'Lưu'}</button>${accountHTML()}</div>`;
+ ${first?accountHTML(true):''}<button class="btn pri" id="pfSave" type="button" style="width:100%">${first?'Vào game':'Lưu'}</button>${first?'':accountHTML(false)}</div>`;
  sh.hidden=false;
  $('#avg').addEventListener('click',e=>{const b=e.target.closest('[data-av]');if(!b)return;pick=b.dataset.av;$('#avg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.av===pick)))});
  bindAccount();
- $('#pfSave').addEventListener('click',()=>{const nm=$('#pfName').value.trim()||'Đạo hữu';S.profile={name:nm.slice(0,18),avatar:pick};save();sh.hidden=true;render()})}
+ $('#pfSave').addEventListener('click',async()=>{const nm=$('#pfName').value.trim()||'Đạo hữu';S.profile={name:nm.slice(0,18),avatar:pick};save();
+  const ph=$('#acPhone'),pin=$('#acPin');if(first&&ph&&(ph.value.trim()||pin.value.trim())){const b=$('#pfSave');b.disabled=true;b.textContent='Đang vào…';const ok=await phoneLogin(ph.value,pin.value);b.disabled=false;b.textContent='Vào game';if(!ok)return}
+  sh.hidden=true;render()})}
 function codeSheet(c){const sh=$('#sheet');
  sh.innerHTML=`<div class="card" role="dialog" aria-modal="true" aria-label="${esc(c.item)}">${c.slug&&ICON[c.slug]?`<img src="${ICON[c.slug]}" alt="" width="96" height="96">`:''}<h3 style="font-family:var(--display);font-weight:400;font-size:20px">${esc(c.item)}</h3><canvas id="qr" width="200" height="200"></canvas><div class="code">${c.code}</div>
  <p class="note" style="margin:0">${c.kind==='topping'?`Dùng kèm đơn từ ${MINORDER[(TOPPINGS.find(t=>t.id===c.slug)||{k:5}).k]}.000đ tại THEZONE · 1 lần`:'Đưa mã cho nhân viên khi chụp tại M BOOTH'}<br>Hạn dùng: ${new Date(c.exp).toLocaleDateString('vi-VN')}</p>
@@ -642,7 +644,6 @@ async function cloudInit(){if(!FB_CONFIG)return;
  try{const base=`https://www.gstatic.com/firebasejs/${FB_VER}/`;await loadScript(base+'firebase-app-compat.js');
   await Promise.all([loadScript(base+'firebase-auth-compat.js'),loadScript(base+'firebase-firestore-compat.js')]);
   firebase.initializeApp(FB_CONFIG);CLOUD.auth=firebase.auth();CLOUD.db=firebase.firestore();CLOUD.on=true;
-  try{await CLOUD.auth.getRedirectResult()}catch(e){await linkError(e)}
   CLOUD.auth.onAuthStateChanged(async u=>{
    if(!u){CLOUD.user=null;try{await CLOUD.auth.signInAnonymously()}catch(e){}return}
    CLOUD.user=u;try{await pullState()}catch(e){}
@@ -655,31 +656,50 @@ async function pullState(){const uid=CLOUD.user.uid,ref=CLOUD.db.collection('use
  S.uid=uid;saveLocal();pushNow()}
 function pushSoon(){if(!CLOUD.user)return;clearTimeout(CLOUD.pushT);CLOUD.pushT=setTimeout(pushNow,1500)}
 function pushNow(){if(!CLOUD.user)return;const o={};for(const k of SYNC_KEYS)if(S[k]!==undefined)o[k]=S[k];
- o.updatedAt=S.updatedAt||Date.now();o.name=(S.profile&&S.profile.name)||'';o.guest=!!CLOUD.user.isAnonymous;
+ o.updatedAt=S.updatedAt||Date.now();o.name=(S.profile&&S.profile.name)||'';o.guest=!!CLOUD.user.isAnonymous;o.phone=userPhone();
  CLOUD.db.collection('users').doc(CLOUD.user.uid).set(JSON.parse(JSON.stringify(o))).catch(()=>{})}
 onSave=pushSoon;
-async function googleLogin(){if(!CLOUD.on)return;const p=new firebase.auth.GoogleAuthProvider();const u=CLOUD.auth.currentUser;
- try{if(u&&u.isAnonymous)await u.linkWithPopup(p);else await CLOUD.auth.signInWithPopup(p);CLOUD.user=CLOUD.auth.currentUser;pushNow();toast('Đã đăng nhập Google. Dữ liệu của bạn đã được giữ.');render()}
- catch(e){await linkError(e,p)}}
-async function linkError(e,p){if(!e)return;
- if(e.code==='auth/credential-already-in-use'&&e.credential){await CLOUD.auth.signInWithCredential(e.credential);toast('Đã vào tài khoản Google cũ của bạn.');return}
- if(p&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'||e.code==='auth/cancelled-popup-request')){const u=CLOUD.auth.currentUser;return u&&u.isAnonymous?u.linkWithRedirect(p):CLOUD.auth.signInWithRedirect(p)}
- if(e.code==='auth/popup-closed-by-user')return;
- if(e.code==='auth/unauthorized-domain'){toast('Tên miền chưa được cho phép trong Firebase (Authorized domains).');return}
- toast('Chưa đăng nhập được, thử lại sau.')}
-async function logout(){if(!CLOUD.on)return;await CLOUD.auth.signOut();for(const k of SYNC_KEYS)delete S[k];Object.assign(S,JSON.parse(JSON.stringify(DEF)),{cfg:S.cfg});S.uid=null;saveLocal();render()}
-function accountHTML(){if(!CLOUD.on)return '<p class="note" style="margin:0">Tài khoản chưa bật: dữ liệu đang lưu trên máy này.</p>';
- const u=CLOUD.user;if(!u)return '<p class="note" style="margin:0">Đang kết nối…</p>';
- return u.isAnonymous?'<p class="note" style="margin:0">Bạn đang chơi khách. Đăng nhập để giữ TZ, frame và mã đổi quà khi đổi máy.</p><button class="btn" id="gLogin" type="button" style="width:100%">Đăng nhập bằng Google</button>'
-  :`<p class="note" style="margin:0">Đã đăng nhập: ${esc(u.email||u.displayName||'Google')}</p><button class="btn" id="gLogout" type="button" style="width:100%">Đăng xuất</button>`}
-function bindAccount(){const a=$('#gLogin'),b=$('#gLogout');if(a)a.addEventListener('click',googleLogin);if(b)b.addEventListener('click',()=>{$('#sheet').hidden=true;logout()})}
+/* Đăng nhập nhanh bằng số điện thoại + PIN 4 số (Firebase Email/Password, email dựng từ số điện thoại) */
+const PHONE_DOMAIN='khach.zonez.app';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function normPhone(v){let s=String(v||'').replace(/\D/g,'');if(s.startsWith('84')&&s.length===11)s='0'+s.slice(2);return /^0\d{9}$/.test(s)?s:null}
+const maskPhone=p=>p?p.slice(0,4)+' *** '+p.slice(-3):'';
+const userPhone=()=>{const e=CLOUD.user&&CLOUD.user.email||'';return e.endsWith('@'+PHONE_DOMAIN)?e.split('@')[0]:''};
+async function phoneLogin(phoneRaw,pinRaw){
+ const phone=normPhone(phoneRaw),pin=String(pinRaw||'').trim();
+ if(!phone){toast('Số điện thoại chưa đúng (10 số, bắt đầu bằng 0).');return false}
+ if(!/^\d{4}$/.test(pin)){toast('Mã PIN gồm đúng 4 số.');return false}
+ for(let i=0;i<40&&!CLOUD.on;i++)await sleep(200);
+ if(!CLOUD.on){toast('Chưa kết nối được máy chủ, thử lại sau.');return false}
+ const email=phone+'@'+PHONE_DOMAIN,pass='zonez-'+pin,u=CLOUD.auth.currentUser;
+ try{
+  if(u&&u.isAnonymous){await u.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email,pass));CLOUD.user=CLOUD.auth.currentUser;S.uid=CLOUD.user.uid;pushNow()}
+  else await CLOUD.auth.createUserWithEmailAndPassword(email,pass);
+  toast('Đã lưu tài khoản '+maskPhone(phone)+'. Nhớ mã PIN nhé.');render();return true}
+ catch(e){
+  if(['auth/email-already-in-use','auth/credential-already-in-use','auth/provider-already-linked'].includes(e.code)){
+   try{await CLOUD.auth.signInWithEmailAndPassword(email,pass);toast('Chào mừng trở lại!');return true}
+   catch(e2){toast(e2.code==='auth/too-many-requests'?'Sai nhiều lần, thử lại sau ít phút.':'Sai mã PIN của số này.');return false}}
+  if(e.code==='auth/operation-not-allowed'){toast('Chủ tiệm chưa bật kiểu đăng nhập Email/Password trong Firebase.');return false}
+  if(e.code==='auth/network-request-failed'){toast('Mất mạng, thử lại.');return false}
+  toast('Chưa đăng nhập được ('+(e.code||'lỗi')+').');return false}}
+async function logout(){if(!CLOUD.on)return;await CLOUD.auth.signOut();for(const k of SYNC_KEYS)delete S[k];Object.assign(S,JSON.parse(JSON.stringify(DEF)),{cfg:S.cfg});S.uid=null;saveLocal();render();profileSheet(true)}
+const acFields='<input class="field" id="acPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="Số điện thoại"><input class="field" id="acPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Mã PIN 4 số (tự đặt)">';
+function accountHTML(first){if(!FB_CONFIG)return '<p class="note" style="margin:0">Tài khoản chưa bật: dữ liệu đang lưu trên máy này.</p>';
+ const ph=userPhone();
+ if(ph)return `<p class="note" style="margin:0">Tài khoản: <b>${maskPhone(ph)}</b> · tự lưu</p><button class="btn" id="acOut" type="button" style="width:100%">Đăng xuất</button>`;
+ if(first)return `<p class="note" style="margin:0">Nhập số điện thoại và tự đặt PIN 4 số để giữ TZ, frame, mã quà. Đã có tài khoản thì nhập lại đúng số và PIN. Bỏ trống để chơi thử.</p>${acFields}`;
+ return `<p class="note" style="margin:0">Bạn đang chơi khách. Lưu bằng số điện thoại để không mất dữ liệu khi đổi máy.</p>${acFields}<button class="btn" id="acGo" type="button" style="width:100%">Lưu / Đăng nhập</button>`}
+function bindAccount(){const g=$('#acGo'),o=$('#acOut');
+ if(g)g.addEventListener('click',async()=>{g.disabled=true;const ok=await phoneLogin($('#acPhone').value,$('#acPin').value);g.disabled=false;if(ok)$('#sheet').hidden=true});
+ if(o)o.addEventListener('click',()=>{$('#sheet').hidden=true;logout()})}
 
 /* Suất chung cả tiệm mỗi ngày */
 function listenQuota(){if(!CLOUD.user||CLOUD.quotaUnsub)return;CLOUD.quotaUnsub=CLOUD.db.collection('quota').doc(dayKey()).onSnapshot(s=>{CLOUD.quota=s.data()||{};if(tab==='bag'&&$('#hunt').hidden)render()},()=>{})}
 function usedToday(k){if(CLOUD.user)return CLOUD.quota['k'+k]||0;const tl=(S.tierLog&&S.tierLog[dayKey()])||{};return tl[k]||0}
 async function takeQuota(k){if(!CLOUD.user)return true;const ref=CLOUD.db.collection('quota').doc(dayKey());
  try{return await CLOUD.db.runTransaction(async tx=>{const s=await tx.get(ref);const cur=(s.exists&&s.data()['k'+k])||0;if(cur>=QUOTA[k])return false;tx.set(ref,{['k'+k]:cur+1},{merge:true});return true})}catch(e){return false}}
-function saveCode(c,t){if(!CLOUD.user)return;CLOUD.db.collection('codes').doc(c.code).set({uid:CLOUD.user.uid,name:(S.profile&&S.profile.name)||'',item:c.item,kind:c.kind,k:t?t.k:0,minOrder:t?MINORDER[t.k]*1000:0,exp:c.exp,used:false,createdAt:Date.now()}).catch(()=>{})}
+function saveCode(c,t){if(!CLOUD.user)return;CLOUD.db.collection('codes').doc(c.code).set({uid:CLOUD.user.uid,name:(S.profile&&S.profile.name)||'',phone:maskPhone(userPhone()),item:c.item,kind:c.kind,k:t?t.k:0,minOrder:t?MINORDER[t.k]*1000:0,exp:c.exp,used:false,createdAt:Date.now()}).catch(()=>{})}
 
 /* Nhờ bạn chữa khi nhiễm độc */
 async function askFriendCure(){if(!CLOUD.user){toast('Cần bật tài khoản để gửi link.');return}const pf=S.profile||{name:'Bạn',avatar:'trasua'};
