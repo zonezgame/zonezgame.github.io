@@ -326,7 +326,7 @@ function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.la
  return `<div class="top"><div><div class="wm">ZONE <span>Z</span></div><span class="by">THEZONE · bản test</span></div><button class="chip" id="mute" type="button">Âm thanh: ${S.mute?'tắt':'bật'}</button></div>
  <button class="me${inf?' inf':''}" id="meBtn" type="button"><img src="${avatarSrc()}" alt=""><span><b>${esc(pf.name)}</b><small>${inf?`Nhiễm độc · còn <span id="infT">${mmss(S.infectedUntil-Date.now())}</span>`:`Đã cứu ${Object.values(S.cured).reduce((a,b)=>a+b,0)} người · bấm để đổi nhân vật`}</small></span></button>
  ${inf?`<div class="infbox"><h3>Bạn đang nhiễm độc</h3><ul><li>Nhân vật của bạn hóa zombie.</li><li>TZ nhận được khi chữa zombie giảm một nửa.</li><li>Hết sau <b id="infT2">${mmss(S.infectedUntil-Date.now())}</b>, hoặc giải độc ngay tại quầy.</li></ul>
- <button class="btn pri" id="cureCounter" type="button">Giải độc tại quầy THEZONE (giả lập quét QR)</button>${CLOUD.user?'<button class="btn" id="askCure" type="button">Nhờ bạn chữa: gửi link qua Zalo, Messenger</button>':'<p class="note" style="margin:0">Khi bật tài khoản: gửi link nhờ bạn bè chụp flash để chữa.</p>'}</div>`:''}
+ ${isOwner()?'<button class="btn pri" id="cureCounter" type="button">Giải độc ngay (công cụ chủ tiệm)</button>':`<p class="note" style="margin:0">Ghé quầy THEZONE, đọc nickname <b>${esc(pf.name)}</b> cho nhân viên để giải độc ngay.</p>`}${CLOUD.user?'<button class="btn" id="askCure" type="button">Nhờ bạn chữa: gửi link qua Zalo, Messenger</button>':'<p class="note" style="margin:0">Khi bật tài khoản: gửi link nhờ bạn bè chụp flash để chữa.</p>'}</div>`:''}
  <p class="lede">Zombie tràn khắp phố. <b>THEZONE là Vùng An Toàn.</b> Không đánh, chỉ chụp: đèn flash giúp họ tỉnh lại. Zombie càng gần, flash càng mạnh, nhưng đừng để bị cắn.</p>
  <p class="note" style="margin:0">Bật camera và xoay điện thoại để tìm zombie quanh bạn. Chơi ở chỗ hơi tối sẽ ghê hơn.</p>
  <div class="season"><div class="moon" aria-hidden="true"></div><div class="eyebrow">Mùa đang mở · ${esc(se.dates)}</div><h3>${esc(se.name)}</h3><p>Boss mùa: ${esc(se.boss.name)} · 3 frame giới hạn</p></div>
@@ -334,7 +334,7 @@ function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.la
  <div class="stat"><label>Flash ${S.flash}/${FLASH_MAX}</label><div class="pips">${pipsHTML()}</div><small>+1 mỗi 5 phút</small></div></div>
  <div class="sec"><button class="cta" id="go" type="button">DÒ ZOMBIE</button>
  <p class="note">${first?'Lần dò đầu tiên hôm nay sẽ gặp nhanh.':'Có lúc gặp ngay, có lúc phải dò lâu. Dò quá 45 giây chắc chắn gặp.'}</p>
- <button class="ghost" id="refill" type="button">Nạp đầy flash tại quầy (giả lập quét QR)</button></div>
+ ${isOwner()?'<button class="ghost" id="refill" type="button">Nạp đầy flash (công cụ chủ tiệm)</button>':'<p class="note" style="margin:0">Hết flash? Ghé quầy THEZONE, nhân viên nạp đầy cho bạn.</p>'}</div>
  <div class="sec"><h3>Sổ zombie</h3><div class="list">${rows}</div></div>
  <p class="motto">Làm trước · đo sau · sửa ngay</p>`}
 
@@ -362,14 +362,15 @@ function statsHTML(){const H=S.hunts;const met=H.filter(h=>h.wait!=null);const c
  const dist=[0,0,0];met.forEach(h=>dist[h.wait<=5?0:h.wait<=25?1:2]++);const pct=dist.map(v=>met.length?v/met.length*100:0);
  const seasons=Object.entries(SEASONS).map(([k,v])=>`<button type="button" data-season="${k}" aria-pressed="${k===S.season}">${esc(v.name)}</button>`).join('');
  return `<h2 class="wm" style="font-size:26px">Chỉ số</h2>
- <p class="lede">Con số không nói dối. Số liệu dưới đây lấy từ các lượt bạn chơi trên máy này.</p>
+ <p class="lede">Con số không nói dối. Đây là thành tích của bạn.</p>
  <div class="tiles">
   <div class="stat"><label>Lượt dò</label><b>${H.length}</b></div>
   <div class="stat"><label>Chữa được</label><b>${cures}</b></div>
   <div class="stat"><label>Bị cắn</label><b>${H.filter(h=>h.result==='bitten').length}</b></div>
-  <div class="stat"><label>Gặp trung vị</label><b>${median(met.map(h=>h.wait)).toFixed(1)}s</b></div>
+  <div class="stat"><label>Chờ gặp (giữa)</label><b>${median(met.map(h=>h.wait)).toFixed(1)}s</b></div>
   <div class="stat"><label>TZ kiếm</label><b>${fmt(tzE)}</b></div>
   <div class="stat"><label>Frame rơi</label><b>${frD}</b></div></div>
+ ${isOwner()?`<div class="sec"><p class="note" style="margin:0"><b>Khu chủ tiệm.</b> Chỉ tài khoản có tên trong danh sách chủ tiệm mới thấy phần dưới đây.</p></div>
  <div class="sec"><h3>Thời gian gặp thực tế (${met.length} lượt)</h3>${met.length?barsHTML(pct,target):'<p class="note">Chơi vài lượt để thấy phân bố thật.</p>'}</div>
  <div class="sec"><h3>Chỉnh nhịp gặp</h3>
   <div class="tune">
@@ -382,7 +383,7 @@ function statsHTML(){const H=S.hunts;const met=H.filter(h=>h.wait!=null);const c
   <p class="note">Phần còn lại (${target[2]}%) là nhóm phải dò lâu, từ 25 giây đến trần.</p></div>
  <div class="sec"><h3>Mô phỏng 1.000 lần chữa</h3><button class="btn pri" id="sim" type="button">Chạy mô phỏng</button><div id="simOut"></div></div>
  <div class="sec"><h3>Mùa sự kiện</h3><div class="seg">${seasons}</div><p class="note">Đổi mùa để xem boss và frame thay theo dòng sự kiện. Frame mùa cũ giữ lại trong Kho đồ.</p></div>
- <div class="sec"><h3>Công cụ thử</h3><div class="hrow"><button class="btn" id="addTz" type="button">+1.000 TZ</button><button class="btn" id="reset" type="button">Xoá dữ liệu</button></div></div>`}
+ <div class="sec"><h3>Công cụ thử</h3><div class="hrow"><button class="btn" id="addTz" type="button">+1.000 TZ</button><button class="btn" id="reset" type="button">Xoá dữ liệu</button></div></div>`:''}`}
 
 function simulate(n=1000){const c=S.cfg;const d=[0,0,0],tiers=[0,0,0,0,0,0];let w=0,tz=0,fr=0,since=0;
  for(let i=0;i<n;i++){const t=Math.min(sampleWait(c),c.cap);w+=t;d[t<=5?0:t<=25?1:2]++;const k=rollTier(t);tiers[k]++;const T=TIERS[k];tz+=(T.tz[0]+T.tz[1])/2*1.1;
@@ -643,8 +644,18 @@ function loop(now){raf=requestAnimationFrame(loop);const t=now/1000,dt=Math.min(
    Có cấu hình: khách chơi ngay (ẩn danh), bấm đăng nhập Google để giữ tài khoản khi đổi máy. */
 const FB_CONFIG=window.ZONEZ_FIREBASE||null;
 const FB_VER='10.12.2';
-const CLOUD={on:false,user:null,db:null,auth:null,pushT:0,quota:{},cureUnsub:null,quotaUnsub:null,ready:false};
+const CLOUD={owner:false,userUnsub:null,on:false,user:null,db:null,auth:null,pushT:0,quota:{},cureUnsub:null,quotaUnsub:null,ready:false};
 const SYNC_KEYS=['tz','flash','flashAt','frames','sinceFrame','codes','seen','cured','hunts','topLog','tierLog','lastHuntDay','profile','infectedUntil','bites','cureId'];
+const isOwner=()=>!FB_CONFIG||CLOUD.owner;
+/* Chủ tiệm: nickname nằm trong config/staff, mục owners */
+async function loadOwner(){CLOUD.owner=false;const me=userNick();if(!me)return;
+ try{const s=await CLOUD.db.collection('config').doc('staff').get();const list=(s.exists&&s.data().owners)||[];for(const n of list)if(await nickKey(n)===me){CLOUD.owner=true;break}}catch(e){}}
+/* Nhân viên nạp flash / giải độc từ trang quầy */
+function listenUser(){if(CLOUD.userUnsub)CLOUD.userUnsub();if(!CLOUD.user)return;
+ CLOUD.userUnsub=CLOUD.db.collection('users').doc(CLOUD.user.uid).onSnapshot(sn=>{if(!sn.exists)return;const d=sn.data();let msg='';
+  if((d.grantRefill||0)>(S.grantRefill||0)){S.grantRefill=d.grantRefill;S.flash=FLASH_MAX;S.flashAt=Date.now();msg='Quầy đã nạp đầy flash cho bạn!'}
+  if((d.grantCure||0)>(S.grantCure||0)){S.grantCure=d.grantCure;S.infectedUntil=0;msg='Quầy đã giải độc cho bạn!'}
+  if(msg){toast(msg);try{tone(880,.12);setTimeout(()=>tone(1320,.2),110)}catch(e){}save();render()}},()=>{})}
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
 function toast(msg){let t=$('#toast');if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3200)}
 async function cloudInit(){if(!FB_CONFIG)return;
@@ -654,17 +665,18 @@ async function cloudInit(){if(!FB_CONFIG)return;
   CLOUD.auth.onAuthStateChanged(async u=>{
    if(!u){CLOUD.user=null;try{await CLOUD.auth.signInAnonymously()}catch(e){}return}
    CLOUD.user=u;CLOUD.pulling=true;try{await pullState()}catch(e){}CLOUD.pulling=false;pushNow();
-   CLOUD.ready=true;listenCure();listenQuota();handleCureLink();render()})}
+   await loadOwner();CLOUD.ready=true;listenUser();listenCure();listenQuota();handleCureLink();render()})}
  catch(e){CLOUD.on=false}}
 async function pullState(){const uid=CLOUD.user.uid,ref=CLOUD.db.collection('users').doc(uid);const snap=await ref.get();
  if(snap.exists){const d=snap.data();
   /* đổi sang tài khoản khác: lấy dữ liệu của tài khoản đó; cùng tài khoản: lấy bản mới hơn */
+  if(S.uid!==uid){S.grantRefill=d.grantRefill||0;S.grantCure=d.grantCure||0}
   if(S.uid!==uid||(d.updatedAt||0)>(S.updatedAt||0)){for(const k of SYNC_KEYS)if(k in d)S[k]=d[k];S.updatedAt=d.updatedAt||Date.now()}}
  S.uid=uid;saveLocal();pushNow()}
 function pushSoon(){if(!CLOUD.user)return;clearTimeout(CLOUD.pushT);CLOUD.pushT=setTimeout(pushNow,1500)}
 function pushNow(){if(!CLOUD.user||CLOUD.pulling)return;const o={};for(const k of SYNC_KEYS)if(S[k]!==undefined)o[k]=S[k];
  o.updatedAt=S.updatedAt||Date.now();o.name=(S.profile&&S.profile.name)||'';o.guest=!!CLOUD.user.isAnonymous;o.nick=userNick();
- CLOUD.db.collection('users').doc(CLOUD.user.uid).set(JSON.parse(JSON.stringify(o))).catch(()=>{})}
+ CLOUD.db.collection('users').doc(CLOUD.user.uid).set(JSON.parse(JSON.stringify(o)),{merge:true}).catch(()=>{})}
 onSave=pushSoon;
 /* Tài khoản = nickname + PIN 4 số (Firebase Email/Password, email dựng từ nickname bỏ dấu) */
 const NICK_DOMAIN='nick.zonez.app';
@@ -685,7 +697,7 @@ async function nickLogin(raw,pinRaw){
  try{
   if(u&&u.isAnonymous){await u.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email,pass));CLOUD.user=CLOUD.auth.currentUser;S.uid=CLOUD.user.uid}
   else await CLOUD.auth.createUserWithEmailAndPassword(email,pass);
-  toast('Đã tạo tài khoản. Nhớ nickname và PIN nhé.');return 'new'}
+  toast('Đã tạo tài khoản. Nhớ nickname và PIN nhé.');loadOwner().then(()=>{listenUser();render()});return 'new'}
  catch(e){
   if(['auth/email-already-in-use','auth/credential-already-in-use','auth/provider-already-linked'].includes(e.code)){
    clearTimeout(CLOUD.pushT);

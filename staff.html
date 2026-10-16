@@ -56,6 +56,14 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0}dt{color:va
   <button class="red" id="useBtn" type="button" disabled>Xác nhận đã dùng</button>
  </section>
 
+ <section class="box" id="guest" hidden>
+  <h2>Khách tại quầy</h2>
+  <p class="muted">Nạp đầy flash hoặc giải độc cho khách. Hỏi khách nickname trong game.</p>
+  <div class="row"><input id="nickIn" class="num" placeholder="Nickname của khách" maxlength="18" autocomplete="off"><button id="findBtn" type="button" style="flex:0 0 auto">Tìm</button></div>
+  <dl id="gInfo"></dl>
+  <div class="row" id="gAct" hidden><button id="gRefill" type="button">Nạp đầy flash</button><button class="red" id="gCure" type="button">Giải độc</button></div>
+ </section>
+
  <section class="box" id="today" hidden>
   <h2>Hôm nay</h2>
   <div class="kpi"><div><b id="kTop">0</b><span>topping đã đổi</span></div><div><b id="kFrame">0</b><span>frame đã dùng</span></div><div><b id="kSum">0</b><span>nghìn đ đơn kèm</span></div></div>
@@ -73,11 +81,11 @@ async function init(){if(!CFG){$('#loginMsg').textContent='Chưa có cấu hình
  const b=`https://www.gstatic.com/firebasejs/${V}/`;await load(b+'firebase-app-compat.js');await Promise.all([load(b+'firebase-auth-compat.js'),load(b+'firebase-firestore-compat.js')]);
  firebase.initializeApp(CFG);auth=firebase.auth();db=firebase.firestore();
  auth.getRedirectResult().catch(()=>{});
- auth.onAuthStateChanged(async u=>{user=u;if(!u||u.isAnonymous){$('#login').hidden=false;$('#scan').hidden=$('#today').hidden=true;return}
+ auth.onAuthStateChanged(async u=>{user=u;if(!u||u.isAnonymous){$('#login').hidden=false;$('#scan').hidden=$('#guest').hidden=$('#today').hidden=true;return}
   let ok=false;try{const s=await db.collection('config').doc('staff').get();ok=s.exists&&(s.data().emails||[]).map(x=>x.toLowerCase()).includes((u.email||'').toLowerCase())}catch(e){}
   $('#who').textContent=`Đang dùng: ${u.email}`;
   if(!ok){$('#loginMsg').textContent=`Tài khoản ${u.email} chưa có quyền nhân viên. Chủ tiệm thêm email này vào danh sách nhân viên trong Firestore (config/staff, mục emails).`;$('#login').hidden=false;return}
-  $('#login').hidden=true;$('#scan').hidden=false;$('#today').hidden=false;loadToday()})}
+  $('#login').hidden=true;$('#scan').hidden=false;$('#guest').hidden=false;$('#today').hidden=false;loadToday()})}
 $('#gIn').addEventListener('click',async()=>{const p=new firebase.auth.GoogleAuthProvider();try{await auth.signInWithPopup(p)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')auth.signInWithRedirect(p);else $('#loginMsg').textContent='Chưa đăng nhập được: '+(e.code||'lỗi')}});
 
 /* Quét QR bằng camera */
@@ -109,6 +117,24 @@ $('#useBtn').addEventListener('click',async()=>{if(!cur)return;$('#useBtn').disa
  try{await db.collection('codes').doc(cur.code).update({used:true,usedAt:Date.now(),usedBy:user.email,orderK:order});
   $('#rState').textContent='ĐÃ XÁC NHẬN';navigator.vibrate&&navigator.vibrate([40,40,40]);cur=null;$('#codeIn').value='';loadToday()}
  catch(e){$('#rState').textContent='Chưa lưu được, thử lại';$('#rState').className='state bad';$('#useBtn').disabled=false}});
+
+/* Khách tại quầy: tìm theo nickname (cùng cách băm như trong game) */
+const nickNorm=v=>String(v||'').normalize('NFC').trim().replace(/\s+/g,' ').toLowerCase();
+async function nickKey(v){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(nickNorm(v)));return 'n'+[...new Uint8Array(d)].slice(0,20).map(x=>x.toString(16).padStart(2,'0')).join('')}
+let guest=null;
+const mm=ms=>{const t=Math.max(0,Math.ceil(ms/1000));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+async function findGuest(){const raw=$('#nickIn').value;if(nickNorm(raw).length<2)return;guest=null;$('#gAct').hidden=true;$('#gInfo').innerHTML='<dt>Đang tìm…</dt><dd></dd>';
+ try{const q=await db.collection('users').where('nick','==',await nickKey(raw)).limit(1).get();
+  if(q.empty){$('#gInfo').innerHTML='<dt>Không thấy</dt><dd>Khách cần đặt PIN trong game để có tài khoản.</dd>';return}
+  const doc=q.docs[0],d=doc.data();guest={id:doc.id,d};const inf=(d.infectedUntil||0)>Date.now();
+  $('#gInfo').innerHTML=`<dt>Khách</dt><dd>${esc((d.profile&&d.profile.name)||d.name||'')}</dd><dt>TZ</dt><dd>${(d.tz||0).toLocaleString('vi-VN')}</dd><dt>Flash</dt><dd>${d.flash??'?'}/12</dd><dt>Nhiễm độc</dt><dd>${inf?'còn '+mm(d.infectedUntil-Date.now()):'không'}</dd>`;
+  $('#gAct').hidden=false;$('#gCure').disabled=!inf}
+ catch(e){$('#gInfo').innerHTML='<dt>Lỗi</dt><dd>Chưa tìm được, thử lại.</dd>'}}
+async function grant(field,label){if(!guest)return;try{await db.collection('users').doc(guest.id).update({[field]:Date.now(),grantBy:user.email});navigator.vibrate&&navigator.vibrate(40);
+  $('#gInfo').innerHTML+=`<dt>Xong</dt><dd>${label}. Game của khách tự cập nhật.</dd>`;$('#gAct').hidden=true}
+ catch(e){$('#gInfo').innerHTML+='<dt>Lỗi</dt><dd>Chưa lưu được, thử lại.</dd>'}}
+$('#findBtn').addEventListener('click',findGuest);$('#nickIn').addEventListener('keydown',e=>{if(e.key==='Enter')findGuest()});
+$('#gRefill').addEventListener('click',()=>grant('grantRefill','Đã nạp đầy flash'));$('#gCure').addEventListener('click',()=>grant('grantCure','Đã giải độc'));
 
 async function loadToday(){const start=new Date();start.setHours(0,0,0,0);
  try{const q=await db.collection('codes').where('usedAt','>=',start.getTime()).orderBy('usedAt','desc').limit(100).get();

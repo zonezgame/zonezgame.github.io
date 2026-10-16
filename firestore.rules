@@ -11,6 +11,10 @@ service cloud.firestore {
     // Dữ liệu người chơi: chỉ chính người đó đọc và ghi.
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
+      // Nhân viên tìm khách theo nickname, nạp flash và giải độc.
+      allow read: if isStaff();
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['grantRefill', 'grantCure', 'grantBy']);
     }
 
     // Mã đổi quà: người chơi tạo mã của mình; nhân viên đọc và đánh dấu đã dùng một lần.
@@ -50,7 +54,7 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done', 'by', 'byName', 'doneAt']);
     }
 
-    // Danh sách email nhân viên: chủ tiệm sửa trong console.
+    // config/staff: emails (nhân viên, Google) và owners (nickname chủ tiệm trong game). Chủ tiệm sửa trong console.
     match /config/{doc} {
       allow read: if signedIn();
     }
