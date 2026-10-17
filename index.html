@@ -217,6 +217,17 @@ h2,h3{margin:0;text-wrap:balance}
 .cc{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 4px 10px}
 .cc img{width:100%;aspect-ratio:1;border-radius:10px;background:var(--panel-2)}
 .cc b{font-size:13px}.cc small{font-size:11px;color:var(--muted)}.cc.ok{border-color:rgba(127,209,139,.55)}
+/* Trạm nạp gần bạn */
+.card.ns{max-height:86vh;overflow:auto}
+.nsl{display:flex;flex-direction:column;gap:8px;width:100%}
+.nsr{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:left}
+.nsr.dim{opacity:.55}
+.nsi{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#2a2410;color:#ffd23f;font-weight:800;font-size:18px}
+.nsi.z{background:var(--sodium);color:#111;font-family:var(--display)}
+.nst{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.nst b{font-size:15px}.nst small{font-size:12px;color:var(--muted)}.nst small b{color:var(--fg);font-size:12px}
+.tg{align-self:flex-start;font-family:var(--body);font-size:11.5px;font-weight:700;color:#ffd23f;border:1px solid currentColor;border-radius:99px;padding:1px 8px;margin-top:2px}
+.tg.ok{color:var(--ok)}.tg.off{color:var(--danger)}
+.nsg{flex:none;font-size:12px;font-weight:700;color:#111;background:var(--sodium);border-radius:10px;padding:8px 10px;text-decoration:none}
 /* Shop */
 .shop{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .item{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 8px;color:var(--fg)}
@@ -471,7 +482,7 @@ function homeHTML(){const se=SEASONS[S.season];const first=S.cfg.firstFast&&S.la
    ${tile('tChars','people','Nhân vật','Bộ sưu tập '+seen+'/'+total,'#ff5fb3',false)}
    ${tile('tShop','cart','Cửa hàng','Vật phẩm','#62a9ff',false)}
    ${tile('tBag','box','Kho đồ',unused?unused+' mã chưa dùng':'Topping · Frame','#cde86b',unused>0)}
-   ${tile('scanSt','bolt','Trạm nạp','Quét QR đầy flash','#ffd23f',S.flash<FLASH_MAX)}
+   ${tile('nearSt','bolt','Trạm nạp','Gần bạn · quét QR','#ffd23f',S.flash<FLASH_MAX)}
    ${tile('tStats','chart','Chỉ số','Thành tích','#7ad7ff',false)}
    ${tile('tEvent','event','Sự kiện',esc(se.name)+' · '+esc(se.dates),'#ff8a2b',true)}
   </div>
@@ -545,7 +556,7 @@ function bind(){const on=(id,ev,fn)=>{const el=document.getElementById(id);if(el
  on('mute','click',()=>{S.mute=!S.mute;render()});
  screen.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buy(b)));
  on('goShop','click',()=>{tab='shop';render()});
- on('scanSt','click',scanStation);
+ on('scanSt','click',scanStation);on('nearSt','click',nearStations);
  screen.querySelectorAll('[data-top]').forEach(b=>b.addEventListener('click',()=>redeem(b.dataset.top)));
  screen.querySelectorAll('[data-frame]').forEach(b=>b.addEventListener('click',()=>frameSheet(b.dataset.frame)));
  screen.querySelectorAll('[data-code]').forEach(b=>b.addEventListener('click',()=>{const c=S.codes.find(x=>x.code===b.dataset.code);if(c)codeSheet(c)}))}
@@ -776,7 +787,7 @@ function drawHp(){const T=TIERS[HS.tier];let s='';for(let i=0;i<T.hp;i++)s+=`<i 
 function pop(text,color){HS.pops.push({text,color,at:performance.now()})}
 function surge(now){HS.mode='lunge';HS.modeUntil=now+340;groan();buzz(90)}
 function shoot(){if(HS.phase!=='aim')return;const now=performance.now();if(now<HS.cdUntil){buzz(8);return}buzz(25);
- if(S.flash<=0){$('#aimHint').textContent='Hết flash. Mua ở Shop hoặc nạp tại quầy.';tone(200,.2,'square',.04);return}
+ if(S.flash<=0){$('#aimHint').textContent='Hết flash. Thoát ra sảnh, bấm Trạm nạp để tìm trạm gần bạn.';tone(200,.2,'square',.04);return}
  S.flash--;save();hudTop();const fx=$('#flashfx');fx.style.background=eqItem('fx').flash;fx.classList.remove('go');void fx.offsetWidth;fx.classList.add('go');shutter();HS.cdUntil=now+650;HS.flashAt=now;
  const g=HS.g;if(!g)return;
  if(!onTarget(g)){pop('Lệch khung!','#ff6767');surge(now);return}
@@ -999,6 +1010,32 @@ async function chargeAt(id){id=String(id||'').replace(/[^A-Za-z0-9]/g,'').slice(
   try{tone(660,.1);setTimeout(()=>tone(990,.12),90);setTimeout(()=>tone(1320,.2),180);buzz([40,40,80])}catch(e){}
   stationSheet('Đã nạp đầy flash!',`<b>${esc(r.name)}</b> · ${(STATION_LV[r.lv]||{}).name||'Trạm nạp'}<br>Flash: <b>${FLASH_MAX}/${FLASH_MAX}</b>. Trạm còn <b>${r.left}</b> lượt hôm nay.`,true)}
  catch(e){stationSheet('Chưa nạp được','Mạng chập chờn, thử quét lại nhé.',false)}}
+/* ---------- Trạm nạp gần bạn ---------- */
+const STORE={name:'Quầy THEZONE',addr:'Lê Duẩn, Phú Mỹ, Phú Tân',q:'THEZONE Lê Duẩn Phú Mỹ Phú Tân An Giang'};
+const distM=(a,b,c,d)=>{const R=6371000,t=Math.PI/180,x=Math.sin((c-a)*t/2)**2+Math.cos(a*t)*Math.cos(c*t)*Math.sin((d-b)*t/2)**2;return 2*R*Math.asin(Math.sqrt(x))};
+const fmtD=m=>m<1000?Math.round(m/10)*10+' m':(m/1000).toFixed(m<10000?1:0)+' km';
+function storeRow(){return `<div class="nsr"><div class="nsi z">Z</div><div class="nst"><b>${STORE.name}</b><small>${STORE.addr} · nhân viên nạp đầy, giải độc</small><span class="tg ok">Mở trong giờ bán</span></div><a class="nsg" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(STORE.q)}" target="_blank" rel="noopener">Chỉ đường</a></div>`}
+async function nearStations(){const sh=$('#sheet');
+ const head=`<h3 style="font-family:var(--display);font-weight:400;font-size:22px;margin:0">⚡ Trạm nạp gần bạn</h3><p class="note" style="margin:0">Đến trạm, quét QR là đầy ${FLASH_MAX} flash. Mỗi trạm nạp 1 lần mỗi ngày.</p>`;
+ const foot=`<button class="btn pri" id="nsScan" type="button" style="width:100%">Quét QR trạm nạp</button><button class="btn" id="nsX" type="button" style="width:100%">Đóng</button>`;
+ const paint=body=>{sh.innerHTML=`<div class="card ns" role="dialog" aria-modal="true" aria-label="Trạm nạp gần bạn">${head}<div class="nsl">${body}</div>${foot}</div>`;sh.hidden=false;
+  $('#nsX').addEventListener('click',()=>{sh.hidden=true});$('#nsScan').addEventListener('click',scanStation)};
+ paint('<p class="note" style="margin:0">Đang tìm trạm…</p>');
+ if(!CLOUD.on||!CLOUD.user){paint('<p class="note" style="margin:0">Cần mạng để xem danh sách trạm.</p>'+storeRow());return}
+ let list=[],used={};
+ try{const [q,u]=await Promise.all([CLOUD.db.collection('stations').get(),CLOUD.db.collection('stationUse').where('day','==',dayKey()).get()]);
+  q.forEach(d=>{const x=d.data();if(x.active)list.push(Object.assign({id:d.id},x))});
+  u.forEach(d=>{const x=d.data();used[x.station]={n:x.n||0,me:!!(x.users&&x.users[CLOUD.user.uid])}})}
+ catch(e){paint('<p class="note" style="margin:0">Chưa tải được danh sách trạm, thử lại sau.</p>'+storeRow());return}
+ let me=null;try{me=await new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>ok(p.coords),no,{enableHighAccuracy:false,timeout:8000,maximumAge:120000}):no())}catch(e){}
+ for(const s of list)s.dist=(me&&typeof s.lat==='number')?distM(me.latitude,me.longitude,s.lat,s.lng):null;
+ const ok=x=>{const u=used[x.id]||{n:0,me:false};return !u.me&&u.n<(x.cap||5)?0:1};
+ list.sort((a,b)=>ok(a)-ok(b)||(a.dist==null?1e12:a.dist)-(b.dist==null?1e12:b.dist)||String(a.name).localeCompare(String(b.name)));
+ const rows=list.map(s=>{const u=used[s.id]||{n:0,me:false},cap=s.cap||5,left=Math.max(0,cap-u.n);
+  const map=typeof s.lat==='number'?`https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((s.addr||s.name)+' Phú Tân An Giang')}`;
+  const st=u.me?'<span class="tg ok">Hôm nay bạn đã nạp</span>':left?`<span class="tg">Còn ${left}/${cap} lượt</span>`:'<span class="tg off">Hết lượt hôm nay</span>';
+  return `<div class="nsr${!left||u.me?' dim':''}"><div class="nsi">⚡</div><div class="nst"><b>${esc(s.name)}</b><small>${s.addr?esc(s.addr)+' · ':''}${(STATION_LV[s.level]||{}).name||'Trạm'}${s.dist!=null?' · <b>'+fmtD(s.dist)+'</b>':''}</small>${st}</div><a class="nsg" href="${map}" target="_blank" rel="noopener">Chỉ đường</a></div>`}).join('');
+ paint((me?'':'<p class="note" style="margin:0">Bật vị trí để xếp trạm gần nhất lên đầu.</p>')+(rows||'<p class="note" style="margin:0">Chưa có trạm đối tác nào. Ghé quầy THEZONE để nạp nhé.</p>')+storeRow())}
 async function handleStationLink(){if(!PENDING_STATION)return;const id=PENDING_STATION;PENDING_STATION=null;await chargeAt(id)}
 /* Quét QR trạm bằng camera ngay trong game */
 let SCAN={stream:null,on:false,lib:null};
